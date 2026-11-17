@@ -162,8 +162,10 @@ pane.addBinding(demo, "pickUpBy", {
   label: "pick up by",
   options: { "press and drag": "press and drag", click: "click" },
 });
-pane.addBinding(demo, "alwaysNudge", { label: "always nudge" });
-pane.addBinding(demo, "nudgeReach", { label: "nudge reach", min: 1, max: 4, step: 1 });
+pane.addBinding(demo, "oneCovered", {
+  label: "one item covered",
+  options: { swap: "swap", push: "push" },
+});
 pane.addBinding(demo, "nudgeAnimation", {
   label: "animation",
   options: Object.fromEntries(nudgeAnimations.map((animation) => [animation, animation])),

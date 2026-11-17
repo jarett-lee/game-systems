@@ -7,7 +7,6 @@ function demoWithShowreelLayout(): Demo {
   const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
   demo.reset(defaultSizes, showreelLayout);
   demo.holdBy = "where grabbed";
-  demo.alwaysNudge = false;
   return demo;
 }
 
@@ -156,66 +155,30 @@ describe("rotating while holding", () => {
   });
 });
 
-describe("always nudge", () => {
+describe("covering one item", () => {
   function dropDotOntoL(demo: Demo) {
     const stash = frameFor(demo.layout, "stash");
     const dot = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
     const l = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
     demo.press({ x: dot.x + 10, y: dot.y + 10 });
     demo.move({ x: l.x + 10, y: l.y + 10 });
-    const target = demo.target();
     demo.release({ x: l.x + 10, y: l.y + 10 });
-    return target;
   }
 
-  test("is on by default, reaching one cell", () => {
-    const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
-    expect(demo.alwaysNudge).toBe(true);
-    expect(demo.nudgeReach).toBe(1);
+  test("swaps it out by default", () => {
+    const demo = demoWithShowreelLayout();
+    dropDotOntoL(demo);
+    expect(demo.inventory.hand?.itemId).toBe("L3");
   });
 
-  test("slides the piece to a free spot next to it instead of swapping", () => {
+  test("pushes it aside when set to push", () => {
     const demo = demoWithShowreelLayout();
-    demo.alwaysNudge = true;
+    demo.oneCovered = "push";
+    dropDotOntoL(demo);
 
-    expect(dropDotOntoL(demo)).toMatchObject({ aimed: { x: 0, y: 0 }, origin: { x: 1, y: 0 }, nudged: true, outcome: { kind: "placed" } });
     expect(demo.inventory.hand).toBeNull();
-    expect(demo.inventory.placements).toContainEqual({ itemId: "dot-3", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 });
-  });
-
-  test("swaps when nothing within reach is free", () => {
-    const demo = demoWithShowreelLayout();
-    demo.alwaysNudge = true;
-    demo.reset(defaultSizes, [
-      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
-      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
-      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 1 }, rotation: 0 },
-      { itemId: "dot-3", gridId: "stash", origin: { x: 3, y: 3 }, rotation: 0 },
-    ]);
-
-    expect(dropDotOntoL(demo)).toMatchObject({ nudged: false, outcome: { kind: "swapped" } });
-  });
-
-  test("still pushes when the piece covers several others", () => {
-    const demo = demoWithShowreelLayout();
-    demo.alwaysNudge = true;
-    demo.reset(defaultSizes, [
-      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
-      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
-      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 3 }, rotation: 0 },
-    ]);
-    const stash = frameFor(demo.layout, "stash");
-    const domino = cellOrigin(demo.layout, stash, { x: 0, y: 3 });
-    const dots = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
-    demo.press({ x: domino.x + 10, y: domino.y + 10 });
-    demo.move({ x: dots.x + 10, y: dots.y + 10 });
-
-    expect(demo.target()).toMatchObject({ nudged: false, outcome: { kind: "pushed" } });
-  });
-
-  test("when off, swaps right away", () => {
-    const demo = demoWithShowreelLayout();
-    expect(dropDotOntoL(demo)).toMatchObject({ nudged: false, outcome: { kind: "swapped" } });
+    expect(demo.message).toBe("Pushed the L 3-piece aside");
+    expect(demo.inventory.placements).toContainEqual({ itemId: "dot-3", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 });
   });
 });
 

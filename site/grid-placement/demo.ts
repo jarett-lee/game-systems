@@ -4,7 +4,6 @@ import {
   footprintBounds,
   itemAt,
   nudgeInside,
-  nudgeToFree,
   popOut,
   previewDrop,
   returnHeld,
@@ -13,6 +12,7 @@ import {
   stow,
   type Cell,
   type DropOutcome,
+  type DropRules,
   type Footprint,
   type Inventory,
   type Placement,
@@ -57,8 +57,7 @@ export class Demo {
   grabOffset: Point = { x: 0, y: 0 };
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
-  alwaysNudge = true;
-  nudgeReach = 1;
+  oneCovered: DropRules["oneCovered"] = "swap";
   nudgeAnimation: NudgeAnimation = "slide";
   motions: Motion[] = [];
   spin: Spin | null = null;
@@ -140,24 +139,11 @@ export class Demo {
       const raw = { x: cell.x - grabbed.x, y: cell.y - grabbed.y };
       const inside = nudgeInside(this.inventory, frame.grid.id, raw);
       if (!inside) continue;
-      const outcome = previewDrop(this.inventory, frame.grid.id, inside);
+      const outcome = previewDrop(this.inventory, frame.grid.id, inside, { oneCovered: this.oneCovered });
       const nudged = inside.x !== raw.x || inside.y !== raw.y;
-      const kept = { frame, aimed: raw, origin: inside, nudged, outcome };
-      if (!this.alwaysNudge || outcome.kind !== "swapped") return kept;
-      const free = nudgeToFree(this.inventory, frame.grid.id, inside, this.nudgeReach, this.lean(frame, anchor, cell));
-      if (!free) return kept;
-      return { frame, aimed: raw, origin: free, nudged: true, outcome: previewDrop(this.inventory, frame.grid.id, free) };
+      return { frame, aimed: raw, origin: inside, nudged, outcome };
     }
     return null;
-  }
-
-  private lean(frame: GridFrame, anchor: Point, cell: Cell): Cell {
-    const corner = cellOrigin(this.layout, frame, cell);
-    const middle = this.layout.cellSize / 2;
-    return {
-      x: (anchor.x - corner.x - middle) / this.layout.pitch,
-      y: (anchor.y - corner.y - middle) / this.layout.pitch,
-    };
   }
 
   press(point: Point): void {
@@ -204,7 +190,7 @@ export class Demo {
     }
     const before = this.inventory;
     const letGoAt = this.heldOriginPoint();
-    const result = drop(this.inventory, target.frame.grid.id, target.origin);
+    const result = drop(this.inventory, target.frame.grid.id, target.origin, { oneCovered: this.oneCovered });
     this.inventory = result.inventory;
     this.animateDrop(before, target, letGoAt, result.outcome);
     this.previews.clear();

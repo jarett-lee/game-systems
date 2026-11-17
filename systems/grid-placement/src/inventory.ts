@@ -36,6 +36,10 @@ export type DropOutcome =
   | { readonly kind: "pushed"; readonly pushed: readonly Placement[] }
   | { readonly kind: "rejected"; readonly reason: "empty-hand" | "out-of-bounds" | "no-room-to-push" };
 
+export type DropRules = { readonly oneCovered: "swap" | "push" };
+
+export const defaultDropRules: DropRules = { oneCovered: "swap" };
+
 export type PopOutcome = { readonly kind: "popped" } | { readonly kind: "refused"; readonly reason: "hand-full" | "not-placed" };
 
 export type StowOutcome = { readonly kind: "placed" } | { readonly kind: "rejected"; readonly reason: "empty-hand" | "no-space" };
@@ -107,30 +111,6 @@ export function nudgeInside(inventory: Inventory, gridId: string, origin: Cell):
   return { x: clamp(origin.x, grid.width - width), y: clamp(origin.y, grid.height - height) };
 }
 
-export function nudgeToFree(
-  inventory: Inventory,
-  gridId: string,
-  origin: Cell,
-  reach: number,
-  toward: Cell = { x: 0, y: 0 },
-): Cell | null {
-  const grid = findGrid(inventory, gridId);
-  const limit = Math.min(reach, Math.max(grid.width, grid.height));
-  const candidates: Cell[] = [];
-  for (let dy = -limit; dy <= limit; dy++) {
-    for (let dx = -limit; dx <= limit; dx++) candidates.push({ x: dx, y: dy });
-  }
-  const steps = (shift: Cell) => Math.abs(shift.x) + Math.abs(shift.y);
-  const lean = (shift: Cell) => shift.x * toward.x + shift.y * toward.y;
-  candidates.sort((a, b) => steps(a) - steps(b) || lean(b) - lean(a) || a.y - b.y || a.x - b.x);
-
-  for (const shift of candidates) {
-    const nudged = { x: origin.x + shift.x, y: origin.y + shift.y };
-    if (previewDrop(inventory, gridId, nudged).kind === "placed") return nudged;
-  }
-  return null;
-}
-
 function fits(inventory: Inventory, placement: Placement): boolean {
   const cells = placementCells(inventory, placement);
   const grid = findGrid(inventory, placement.gridId);
@@ -185,7 +165,12 @@ function planPush(inventory: Inventory, placed: Placement, blockerIds: readonly 
   return best?.moved ?? null;
 }
 
-export function previewDrop(inventory: Inventory, gridId: string, origin: Cell): DropOutcome {
+export function previewDrop(
+  inventory: Inventory,
+  gridId: string,
+  origin: Cell,
+  rules: DropRules = defaultDropRules,
+): DropOutcome {
   const { hand } = inventory;
   if (!hand) return { kind: "rejected", reason: "empty-hand" };
 
@@ -194,21 +179,27 @@ export function previewDrop(inventory: Inventory, gridId: string, origin: Cell):
 
   const covered = itemsUnder(inventory, gridId, cells);
   const [only, ...more] = covered;
+  if (only === undefined) return { kind: "placed" };
+  const placed: Placement = { itemId: hand.itemId, gridId, origin, rotation: hand.rotation };
   if (more.length > 0) {
-    const placed: Placement = { itemId: hand.itemId, gridId, origin, rotation: hand.rotation };
     const pushed = planPush(inventory, placed, covered);
     return pushed ? { kind: "pushed", pushed } : { kind: "rejected", reason: "no-room-to-push" };
   }
-  if (only !== undefined) return { kind: "swapped", poppedItemId: only };
-  return { kind: "placed" };
+  const pushed = rules.oneCovered === "push" ? planPush(inventory, placed, covered) : null;
+  return pushed ? { kind: "pushed", pushed } : { kind: "swapped", poppedItemId: only };
 }
 
 function heldFrom(placement: Placement): Held {
   return { itemId: placement.itemId, rotation: placement.rotation, from: placement };
 }
 
-export function drop(inventory: Inventory, gridId: string, origin: Cell): Result<DropOutcome> {
-  const outcome = previewDrop(inventory, gridId, origin);
+export function drop(
+  inventory: Inventory,
+  gridId: string,
+  origin: Cell,
+  rules: DropRules = defaultDropRules,
+): Result<DropOutcome> {
+  const outcome = previewDrop(inventory, gridId, origin, rules);
   const { hand } = inventory;
   if (outcome.kind === "rejected" || !hand) return { inventory, outcome };
 
