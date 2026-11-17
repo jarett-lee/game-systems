@@ -1,6 +1,6 @@
 import type { Point } from "./layout";
 
-export const nudgeAnimations = ["ease out", "ease in", "ease in-out", "linear", "spring", "elastic", "pop", "none"] as const;
+export const nudgeAnimations = ["slide", "spring", "pop", "none"] as const;
 
 export type NudgeAnimation = (typeof nudgeAnimations)[number];
 
@@ -18,12 +18,8 @@ export type MotionFrame = { readonly offset: Point; readonly angle: number; read
 
 export const animationSettings = {
   durations: {
-    "ease out": 200,
-    "ease in": 200,
-    "ease in-out": 260,
-    linear: 200,
+    slide: 200,
     spring: 420,
-    elastic: 600,
     pop: 260,
   } satisfies Record<Animation, number>,
   springOvershoot: 1,
@@ -32,27 +28,14 @@ export const animationSettings = {
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
-const easeInCubic = (t: number) => t ** 3;
-
-const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
-
 const easeOutBack = (t: number) => {
   const overshoot = animationSettings.springOvershoot;
   return 1 + (overshoot + 1) * (t - 1) ** 3 + overshoot * (t - 1) ** 2;
 };
 
-const easeOutElastic = (t: number) => {
-  if (t === 0) return 0;
-  return 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
-};
-
 const easings: Record<Animation, (t: number) => number> = {
-  "ease out": easeOutCubic,
-  "ease in": easeInCubic,
-  "ease in-out": easeInOutCubic,
-  linear: (t) => t,
+  slide: easeOutCubic,
   spring: easeOutBack,
-  elastic: easeOutElastic,
   pop: easeOutCubic,
 };
 

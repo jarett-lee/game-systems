@@ -147,17 +147,16 @@ async function runShowreel(): Promise<void> {
 }
 
 const pane = new Pane({ title: "Grid Placement", container: required(".controls", HTMLElement) });
-const grids = pane.addFolder({ title: "Grids" });
 const resetFromSettings = () => {
   if (playing) return;
   demo.reset(settings);
   relayout();
 };
-grids.addBinding(settings, "backpackWidth", { label: "backpack w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);
-grids.addBinding(settings, "backpackHeight", { label: "backpack h", min: 2, max: 8, step: 1 }).on("change", resetFromSettings);
-grids.addBinding(settings, "stashWidth", { label: "stash w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);
-grids.addBinding(settings, "stashHeight", { label: "stash h", min: 2, max: 8, step: 1 }).on("change", resetFromSettings);
-pane.addBinding(settings, "cellSize", { label: "cell size", min: 28, max: 96, step: 2 }).on("change", relayout);
+pane.addButton({ title: "Rotate held (R)" }).on("click", () => demo.rotate("clockwise"));
+pane.addButton({ title: "Rotate held back (E)" }).on("click", () => demo.rotate("counter-clockwise"));
+pane.addButton({ title: "Stow held (Esc)" }).on("click", () => demo.stowHeld());
+pane.addButton({ title: "Reset items" }).on("click", resetFromSettings);
+pane.addButton({ title: "Play Showreel" }).on("click", () => void runShowreel());
 pane.addBinding(demo, "pickUpBy", {
   label: "pick up by",
   options: { "press and drag": "press and drag", click: "click" },
@@ -166,13 +165,13 @@ pane.addBinding(demo, "oneCovered", {
   label: "one item covered",
   options: { swap: "swap", push: "push" },
 });
-pane.addBinding(demo, "nudgeAnimation", {
-  label: "animation",
-  options: Object.fromEntries(nudgeAnimations.map((animation) => [animation, animation])),
-});
 pane.addBinding(demo, "holdBy", {
   label: "hold item by",
   options: { "where grabbed": "where grabbed", "item center": "item center" },
+});
+pane.addBinding(demo, "nudgeAnimation", {
+  label: "animation",
+  options: Object.fromEntries(nudgeAnimations.map((animation) => [animation, animation])),
 });
 const timing = pane.addFolder({ title: "Animation timing", expanded: false });
 for (const animation of Object.keys(animationSettings.durations) as (keyof typeof animationSettings.durations)[]) {
@@ -180,11 +179,12 @@ for (const animation of Object.keys(animationSettings.durations) as (keyof typeo
 }
 timing.addBinding(animationSettings, "springOvershoot", { label: "spring overshoot", min: 0, max: 5, step: 0.1 });
 timing.addBinding(animationSettings, "popSwell", { label: "pop swell", min: 0, max: 0.5, step: 0.01 });
-pane.addButton({ title: "Rotate held (R)" }).on("click", () => demo.rotate("clockwise"));
-pane.addButton({ title: "Rotate held back (E)" }).on("click", () => demo.rotate("counter-clockwise"));
-pane.addButton({ title: "Stow held (Esc)" }).on("click", () => demo.stowHeld());
-pane.addButton({ title: "Reset items" }).on("click", resetFromSettings);
-pane.addButton({ title: "Play Showreel" }).on("click", () => void runShowreel());
+pane.addBinding(settings, "cellSize", { label: "cell size", min: 28, max: 96, step: 2 }).on("change", relayout);
+const grids = pane.addFolder({ title: "Grids" });
+grids.addBinding(settings, "backpackWidth", { label: "backpack w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);
+grids.addBinding(settings, "backpackHeight", { label: "backpack h", min: 2, max: 8, step: 1 }).on("change", resetFromSettings);
+grids.addBinding(settings, "stashWidth", { label: "stash w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);
+grids.addBinding(settings, "stashHeight", { label: "stash h", min: 2, max: 8, step: 1 }).on("change", resetFromSettings);
 
 function frame(): void {
   render(ctx, palette, demo, performance.now());

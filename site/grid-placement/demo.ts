@@ -77,7 +77,7 @@ export class Demo {
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
   oneCovered: DropRules["oneCovered"] = "swap";
-  nudgeAnimation: NudgeAnimation = "ease out";
+  nudgeAnimation: NudgeAnimation = "slide";
   motions: Motion[] = [];
   spin: Spin | null = null;
   private previews = new Map<string, Preview>();
@@ -272,7 +272,7 @@ export class Demo {
       offset: { x: from.at.x - to.at.x, y: from.at.y - to.at.y },
       angle: shortestTurn(from.angle - to.angle),
       start,
-      animation: this.nudgeAnimation === "none" ? "ease out" : this.nudgeAnimation,
+      animation: this.nudgeAnimation === "none" ? "slide" : this.nudgeAnimation,
     };
   }
 

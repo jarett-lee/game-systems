@@ -74,6 +74,29 @@ body.playing canvas {
   --tp-base-font-family: "Space Grotesk", system-ui, sans-serif;
 }
 
+.controls .tp-fldv {
+  margin: 10px 4px;
+  border-left: 3px solid var(--coral);
+  background: var(--navy);
+}
+
+.controls .tp-fldv_b {
+  background: var(--navy-raised);
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.controls .tp-fldv_b:hover {
+  background: var(--slate-deep);
+}
+
+.controls .tp-fldv_c {
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
 body.playing .controls {
   opacity: 0.5;
   pointer-events: none;
