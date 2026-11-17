@@ -36,7 +36,7 @@ test("the Showreel shows a place, a push preview, a swap, and a move between gri
     "over:placed",
     "Placed",
     "over:swapped",
-    "Swapped: the monomino popped out",
+    "Swapped: the dot popped out",
     "over:placed",
     "Placed",
     "over:placed",

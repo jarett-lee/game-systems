@@ -7,7 +7,7 @@ export type CatalogItem = ItemSpec & { readonly name: string; readonly swatch: S
 export const catalog: readonly CatalogItem[] = [
   {
     id: "O",
-    name: "O tetromino",
+    name: "O piece",
     swatch: "coral",
     footprint: [
       { x: 0, y: 0 },
@@ -18,7 +18,7 @@ export const catalog: readonly CatalogItem[] = [
   },
   {
     id: "I3",
-    name: "I tromino",
+    name: "I 3-piece",
     swatch: "slate",
     footprint: [
       { x: 0, y: 0 },
@@ -26,11 +26,11 @@ export const catalog: readonly CatalogItem[] = [
       { x: 0, y: 2 },
     ],
   },
-  { id: "dot-1", name: "monomino", swatch: "pale", footprint: [{ x: 0, y: 0 }] },
-  { id: "dot-2", name: "monomino", swatch: "slate", marked: true, footprint: [{ x: 0, y: 0 }] },
+  { id: "dot-1", name: "dot", swatch: "pale", footprint: [{ x: 0, y: 0 }] },
+  { id: "dot-2", name: "dot", swatch: "slate", marked: true, footprint: [{ x: 0, y: 0 }] },
   {
     id: "T",
-    name: "T tetromino",
+    name: "T 4-piece",
     swatch: "pale",
     footprint: [
       { x: 0, y: 0 },
@@ -50,7 +50,7 @@ export const catalog: readonly CatalogItem[] = [
   },
   {
     id: "L3",
-    name: "L tromino",
+    name: "L 3-piece",
     swatch: "coral",
     footprint: [
       { x: 0, y: 0 },
@@ -58,7 +58,7 @@ export const catalog: readonly CatalogItem[] = [
       { x: 1, y: 1 },
     ],
   },
-  { id: "dot-3", name: "monomino", swatch: "pale", footprint: [{ x: 0, y: 0 }] },
+  { id: "dot-3", name: "dot", swatch: "pale", footprint: [{ x: 0, y: 0 }] },
 ];
 
 export function catalogItem(itemId: string): CatalogItem {
