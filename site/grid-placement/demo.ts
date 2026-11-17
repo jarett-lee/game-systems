@@ -20,7 +20,7 @@ import {
   type RotationDirection,
 } from "../../systems/grid-placement/src";
 import { catalog, catalogItem, type GridSizes } from "./catalog";
-import { motionAt, spinAt, type Motion, type MotionFrame, type NudgeAnimation, type Spin } from "./motion";
+import { motionAt, pushDuration, spinAt, type Motion, type MotionFrame, type NudgeAnimation, type Spin } from "./motion";
 import {
   cellOrigin,
   cellUnder,
@@ -78,6 +78,8 @@ export class Demo {
   pickUpBy: PickUpBy = "press and drag";
   oneCovered: DropRules["oneCovered"] = "push";
   nudgeAnimation: NudgeAnimation = "slide";
+  pushDwell = 120;
+  private pushSeen: { key: string; since: number } | null = null;
   motions: Motion[] = [];
   spin: Spin | null = null;
   private previews = new Map<string, Preview>();
@@ -251,7 +253,7 @@ export class Demo {
       }
       const was = before.placements.find((placement) => placement.itemId === moved.itemId);
       if (!was) continue;
-      this.motions.push(this.motionBetween(moved.itemId, this.poseOf(before, was), this.poseOf(before, moved), start));
+      this.motions.push(this.motionBetween(moved.itemId, this.poseOf(before, was), this.poseOf(before, moved), start, true));
     }
   }
 
@@ -266,26 +268,42 @@ export class Demo {
     return { at: { x: (left + right) / 2, y: (top + bottom) / 2 }, angle: (placement.rotation * Math.PI) / 2 };
   }
 
-  private motionBetween(itemId: string, from: Pose, to: Pose, start: number): Motion {
+  private motionBetween(itemId: string, from: Pose, to: Pose, start: number, push = false): Motion {
+    const offset = { x: from.at.x - to.at.x, y: from.at.y - to.at.y };
+    const cells = Math.hypot(offset.x, offset.y) / this.layout.pitch;
     return {
       itemId,
-      offset: { x: from.at.x - to.at.x, y: from.at.y - to.at.y },
+      offset,
+      ...(push ? { duration: pushDuration(cells) } : {}),
       angle: shortestTurn(from.angle - to.angle),
       start,
       animation: this.nudgeAnimation === "none" ? "slide" : this.nudgeAnimation,
     };
   }
 
+  pushReady(target: Target | null, now: number): boolean {
+    if (target?.outcome.kind !== "pushed") {
+      this.pushSeen = null;
+      return false;
+    }
+    const key = [
+      target.frame.grid.id,
+      ...target.outcome.pushed.map((moved) => [moved.itemId, moved.origin.x, moved.origin.y, moved.rotation].join(":")),
+    ].join();
+    if (this.pushSeen?.key !== key) this.pushSeen = { key, since: now };
+    return now - this.pushSeen.since >= this.pushDwell;
+  }
+
   previewMotions(target: Target | null, now: number): Map<string, MotionFrame> {
     const frames = new Map<string, MotionFrame>();
     const seen = new Set<string>();
     const hand = this.inventory.hand;
-    const track = (id: string, key: string, from: Pose, to: Pose) => {
+    const track = (id: string, key: string, from: Pose, to: Pose, push = false) => {
       if (this.nudgeAnimation === "none") return;
       seen.add(id);
       let entry = this.previews.get(id);
       if (!entry || entry.key !== key) {
-        entry = { key, to, motion: this.motionBetween(id, entry ? shownPose(entry, now) : from, to, now) };
+        entry = { key, to, motion: this.motionBetween(id, entry ? shownPose(entry, now) : from, to, now, push) };
         this.previews.set(id, entry);
       }
       const frame = motionAt(entry.motion, now);
@@ -301,12 +319,12 @@ export class Demo {
         { at: cellOrigin(this.layout, target.frame, target.origin), angle },
       );
     }
-    if (target?.outcome.kind === "pushed") {
+    if (target?.outcome.kind === "pushed" && this.pushReady(target, now)) {
       for (const moved of target.outcome.pushed) {
         const was = this.inventory.placements.find((placement) => placement.itemId === moved.itemId);
         if (!was) continue;
         const key = [moved.origin.x, moved.origin.y, moved.rotation].join();
-        track(moved.itemId, key, this.poseOf(this.inventory, was), this.poseOf(this.inventory, moved));
+        track(moved.itemId, key, this.poseOf(this.inventory, was), this.poseOf(this.inventory, moved), true);
       }
     }
     for (const [id, entry] of this.previews) {
@@ -321,7 +339,7 @@ export class Demo {
     const placement = this.inventory.placements.find((candidate) => candidate.itemId === id);
     if (!placement || this.nudgeAnimation === "none") return;
     this.motions = this.motions.filter((motion) => motion.itemId !== id);
-    this.motions.push(this.motionBetween(id, shownPose(entry, now), this.poseOf(this.inventory, placement), now));
+    this.motions.push(this.motionBetween(id, shownPose(entry, now), this.poseOf(this.inventory, placement), now, true));
   }
 
   motionFor(itemId: string, now: number): MotionFrame | null {

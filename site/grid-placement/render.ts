@@ -123,6 +123,7 @@ function drawTarget(
   target: Target,
   held: Footprint,
   motions: Map<string, MotionFrame>,
+  showPush: boolean,
 ): void {
   const { layout, inventory } = demo;
   const { frame, origin, outcome } = target;
@@ -146,7 +147,7 @@ function drawTarget(
     for (const rect of ghost) ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
   });
 
-  if (outcome.kind === "pushed") {
+  if (outcome.kind === "pushed" && showPush) {
     for (const destination of outcome.pushed) {
       const at = (cell: Cell) => cellOrigin(layout, frame, cell);
       const cellsThere = placementCells(inventory, destination);
@@ -199,7 +200,8 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
 
   const held = demo.heldFootprint();
   const target = demo.target();
-  const pushedIds = target?.outcome.kind === "pushed" ? target.outcome.pushed.map((placement) => placement.itemId) : [];
+  const showPush = demo.pushReady(target, now);
+  const pushedIds = showPush && target?.outcome.kind === "pushed" ? target.outcome.pushed.map((placement) => placement.itemId) : [];
 
   for (const placement of inventory.placements) {
     const frame = layout.frames.find((candidate) => candidate.grid.id === placement.gridId);
@@ -213,7 +215,7 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
   }
 
   const previews = demo.previewMotions(target, now);
-  if (held && target) drawTarget(ctx, palette, demo, target, held, previews);
+  if (held && target) drawTarget(ctx, palette, demo, target, held, previews, showPush);
 
   const grabbed = held?.[demo.grabIndex];
   const corner = demo.heldCorner();

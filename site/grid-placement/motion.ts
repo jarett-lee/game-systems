@@ -10,6 +10,7 @@ export type Motion = {
   readonly itemId: string;
   readonly offset: Point;
   readonly angle?: number;
+  readonly duration?: number;
   readonly start: number;
   readonly animation: Animation;
 };
@@ -24,7 +25,15 @@ export const animationSettings = {
   } satisfies Record<Animation, number>,
   springOvershoot: 1,
   popSwell: 0.14,
+  pushMs: 180,
+  pushMsPerCell: 60,
+  pushMaxMs: 400,
 };
+
+export function pushDuration(cells: number): number {
+  const { pushMs, pushMsPerCell, pushMaxMs } = animationSettings;
+  return Math.min(pushMaxMs, pushMs + pushMsPerCell * cells);
+}
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
@@ -55,16 +64,16 @@ export type Spin = {
   readonly animation: Animation;
 };
 
-function settling(animation: Animation, start: number, now: number) {
+function settling(animation: Animation, start: number, now: number, duration?: number) {
   const style = styleOf(animation);
-  const t = (now - start) / style.duration;
+  const t = (now - start) / (duration ?? style.duration);
   if (t >= 1) return null;
   const progress = Math.max(0, t);
   return { remaining: 1 - style.ease(progress), scale: 1 + style.swell * Math.sin(Math.PI * progress) };
 }
 
 export function motionAt(motion: Motion, now: number): MotionFrame | null {
-  const frame = settling(motion.animation, motion.start, now);
+  const frame = settling(motion.animation, motion.start, now, motion.duration);
   if (!frame) return null;
   return {
     offset: { x: motion.offset.x * frame.remaining, y: motion.offset.y * frame.remaining },

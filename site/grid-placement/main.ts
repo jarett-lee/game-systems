@@ -187,6 +187,10 @@ for (const animation of Object.keys(animationSettings.durations) as (keyof typeo
 }
 timing.addBinding(animationSettings, "springOvershoot", { label: "spring overshoot", min: 0, max: 5, step: 0.1 });
 timing.addBinding(animationSettings, "popSwell", { label: "pop swell", min: 0, max: 0.5, step: 0.01 });
+timing.addBinding(demo, "pushDwell", { label: "push wait ms", min: 0, max: 500, step: 10 });
+timing.addBinding(animationSettings, "pushMs", { label: "push ms", min: 50, max: 800, step: 10 });
+timing.addBinding(animationSettings, "pushMsPerCell", { label: "push ms per cell", min: 0, max: 300, step: 10 });
+timing.addBinding(animationSettings, "pushMaxMs", { label: "push max ms", min: 100, max: 1500, step: 10 });
 pane.addBinding(settings, "cellSize", { label: "cell size", min: 28, max: 96, step: 2 }).on("change", relayout);
 const grids = pane.addFolder({ title: "Grids", expanded: false });
 grids.addBinding(settings, "backpackWidth", { label: "backpack w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);

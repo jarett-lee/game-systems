@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { defaultSizes, showreelLayout } from "./catalog";
 import { Demo } from "./demo";
+import { pushDuration } from "./motion";
 import { cellOrigin, frameFor } from "./layout";
 
 function demoWithShowreelLayout(): Demo {
@@ -337,6 +338,7 @@ describe("preview animation", () => {
   }
 
   function hoverDominoOverDots(demo: Demo) {
+    demo.pushDwell = 0;
     demo.reset(defaultSizes, [
       { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
       { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
@@ -457,6 +459,7 @@ describe("preview animation", () => {
 describe("pushed pieces that turn", () => {
   function hoverDominoBesideBar(demo: Demo) {
     demo.oneCovered = "push";
+    demo.pushDwell = 0;
     demo.reset({ ...defaultSizes, stashWidth: 3, stashHeight: 3 }, [
       { itemId: "I3", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
       { itemId: "dot-1", gridId: "stash", origin: { x: 2, y: 2 }, rotation: 0 },
@@ -495,6 +498,7 @@ describe("pushed pieces that turn", () => {
     const demo = demoWithShowreelLayout();
     const target = hoverDominoBesideBar(demo);
     const turn = demo.previewMotions(target, 1000).get("I3")?.angle ?? 0;
+    expect(Math.abs(turn)).toBeCloseTo(Math.PI / 2);
     demo.previewMotions(target, 9000);
 
     demo.previewMotions(null, 9000);
@@ -513,5 +517,82 @@ describe("pushed pieces that turn", () => {
     demo.release({ x: aim.x + 10, y: aim.y + 10 });
 
     expect(Math.abs(demo.motionFor("I3", 1000)?.angle ?? 0)).toBeCloseTo(Math.PI / 2);
+  });
+});
+
+describe("waiting before a push preview", () => {
+  function hoverDominoOverDots(demo: Demo) {
+    demo.reset(defaultSizes, [
+      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 3 }, rotation: 0 },
+    ]);
+    const stash = frameFor(demo.layout, "stash");
+    const domino = cellOrigin(demo.layout, stash, { x: 0, y: 3 });
+    const dots = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: domino.x + 10, y: domino.y + 10 });
+    demo.move({ x: dots.x + 10, y: dots.y + 10 });
+    const target = demo.target();
+    if (target?.outcome.kind !== "pushed") throw new Error("expected a push");
+    return target;
+  }
+
+  test("pieces only move aside once the push has stayed the same for the wait", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDominoOverDots(demo);
+
+    expect(demo.previewMotions(target, 1000).size).toBe(0);
+    expect(demo.pushReady(target, 1000 + demo.pushDwell - 1)).toBe(false);
+    expect(demo.previewMotions(target, 1000 + demo.pushDwell).size).toBe(2);
+  });
+
+  test("a different push starts the wait again", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDominoOverDots(demo);
+    if (target.outcome.kind !== "pushed") throw new Error("expected a push");
+    demo.pushReady(target, 1000);
+    const elsewhere = {
+      ...target,
+      outcome: { kind: "pushed" as const, pushed: target.outcome.pushed.map((moved) => ({ ...moved, origin: { x: 3, y: 3 } })) },
+    };
+
+    expect(demo.pushReady(elsewhere, 1000 + demo.pushDwell)).toBe(false);
+  });
+
+  test("letting go before the wait still pushes, sliding the pieces from their old spots", () => {
+    const demo = demoWithShowreelLayout();
+    demo.clock = () => 1000;
+    const target = hoverDominoOverDots(demo);
+    demo.previewMotions(target, 1000);
+    const stash = frameFor(demo.layout, "stash");
+    const dots = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+
+    demo.release({ x: dots.x + 10, y: dots.y + 10 });
+
+    expect(demo.message).toMatch(/^Pushed/);
+    expect(demo.motions.map((motion) => motion.itemId).sort()).toEqual(["dot-1", "dot-2"]);
+  });
+});
+
+describe("push timing", () => {
+  test("a pushed piece takes longer the farther it travels", () => {
+    const demo = demoWithShowreelLayout();
+    demo.clock = () => 1000;
+    demo.oneCovered = "push";
+    demo.reset(defaultSizes, [
+      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 3 }, rotation: 0 },
+    ]);
+    const stash = frameFor(demo.layout, "stash");
+    const domino = cellOrigin(demo.layout, stash, { x: 0, y: 3 });
+    const dot = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: domino.x + 10, y: domino.y + 10 });
+    demo.release({ x: dot.x + 10, y: dot.y + 10 });
+
+    const [motion] = demo.motions;
+    if (!motion) throw new Error("no motion");
+    const cells = Math.hypot(motion.offset.x, motion.offset.y) / demo.layout.pitch;
+    expect(motion.duration).toBe(pushDuration(cells));
+    expect(pushDuration(cells)).toBeGreaterThan(pushDuration(0));
   });
 });

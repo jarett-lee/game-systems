@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { animationSettings, motionAt, nudgeAnimations, type Motion } from "./motion";
+import { animationSettings, motionAt, nudgeAnimations, pushDuration, type Motion } from "./motion";
 
 const motion = (animation: Motion["animation"]): Motion => ({
   itemId: "T",
@@ -44,4 +44,16 @@ test("a longer duration slows the animation down", () => {
   const after = motionAt(motion("slide"), 1100)?.offset.x ?? 0;
   animationSettings.durations.slide = saved;
   expect(after).toBeGreaterThan(before);
+});
+
+test("push duration grows with distance and stops at the cap", () => {
+  expect(pushDuration(0)).toBe(animationSettings.pushMs);
+  expect(pushDuration(2)).toBe(animationSettings.pushMs + 2 * animationSettings.pushMsPerCell);
+  expect(pushDuration(100)).toBe(animationSettings.pushMaxMs);
+});
+
+test("a motion with its own duration lasts that long", () => {
+  const long = { ...motion("slide"), duration: 1000 };
+  expect(motionAt(long, 1999)).not.toBeNull();
+  expect(motionAt(long, 2000)).toBeNull();
 });
