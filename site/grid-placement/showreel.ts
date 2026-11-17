@@ -11,6 +11,7 @@ type Step =
   | { readonly do: "move"; readonly to: Spot }
   | { readonly do: "release" }
   | { readonly do: "rotate" }
+  | { readonly do: "one item covered"; readonly then: Demo["oneCovered"] }
   | { readonly do: "wait"; readonly ms: number };
 
 const at = (grid: Spot["grid"], x: number, y: number): Spot => ({ grid, cell: { x, y } });
@@ -33,15 +34,23 @@ export const showreel: readonly Step[] = [
   { do: "move", to: at("backpack", 5, 1) },
   { do: "release" },
   { do: "wait", ms: 400 },
-  { do: "caption", text: "One item underneath? Swap." },
+  { do: "caption", text: "One item underneath? It's pushed aside too." },
   { do: "press", at: at("backpack", 0, 3) },
   { do: "move", to: at("backpack", 2, 0) },
+  { do: "wait", ms: 1100 },
+  { do: "release" },
+  { do: "wait", ms: 500 },
+  { do: "caption", text: "Or set it to swap" },
+  { do: "one item covered", then: "swap" },
+  { do: "press", at: at("backpack", 1, 0) },
+  { do: "move", to: at("stash", 1, 2) },
   { do: "wait", ms: 900 },
   { do: "release" },
   { do: "caption", text: "The swapped item pops into your hand" },
   { do: "wait", ms: 900 },
-  { do: "move", to: at("stash", 0, 3) },
+  { do: "move", to: at("stash", 2, 0) },
   { do: "release" },
+  { do: "one item covered", then: "push" },
   { do: "wait", ms: 400 },
   { do: "caption", text: "Move items between grids" },
   { do: "press", at: at("stash", 0, 0) },
@@ -85,34 +94,42 @@ export function prepareShowreel(demo: Demo): void {
   demo.reset(defaultSizes, showreelLayout);
   demo.holdBy = "where grabbed";
   demo.pickUpBy = "press and drag";
+  demo.oneCovered = "push";
+}
+
+export function act(demo: Demo, step: Step): void {
+  switch (step.do) {
+    case "press":
+      demo.press(pointAt(demo, step.at));
+      break;
+    case "move":
+      demo.move(pointAt(demo, step.to));
+      break;
+    case "release":
+      if (demo.pointer) demo.release(demo.pointer);
+      break;
+    case "rotate":
+      demo.rotate();
+      break;
+    case "one item covered":
+      demo.oneCovered = step.then;
+      break;
+    case "caption":
+    case "wait":
+      break;
+  }
 }
 
 export async function playShowreel(demo: Demo, onCaption: (text: string) => void): Promise<void> {
-  const settings = { holdBy: demo.holdBy, pickUpBy: demo.pickUpBy };
+  const settings = { holdBy: demo.holdBy, pickUpBy: demo.pickUpBy, oneCovered: demo.oneCovered };
   prepareShowreel(demo);
   demo.move({ x: demo.layout.width / 2, y: demo.layout.height / 2 });
   for (const step of showreel) {
-    switch (step.do) {
-      case "caption":
-        onCaption(step.text);
-        break;
-      case "press":
-        await glide(demo, pointAt(demo, step.at));
-        demo.press(pointAt(demo, step.at));
-        break;
-      case "move":
-        await glide(demo, pointAt(demo, step.to));
-        break;
-      case "release":
-        if (demo.pointer) demo.release(demo.pointer);
-        break;
-      case "rotate":
-        demo.rotate();
-        break;
-      case "wait":
-        await sleep(step.ms);
-        break;
-    }
+    if (step.do === "caption") onCaption(step.text);
+    if (step.do === "wait") await sleep(step.ms);
+    if (step.do === "press") await glide(demo, pointAt(demo, step.at));
+    if (step.do === "move") await glide(demo, pointAt(demo, step.to));
+    act(demo, step);
   }
   onCaption("");
   Object.assign(demo, settings);

@@ -23,7 +23,7 @@ test("spring overshoots its cell before settling", () => {
   expect(Math.min(...xs)).toBeLessThan(0);
 });
 
-test("spring overshoots one notch by default", () => {
+test("spring overshoot defaults to 1", () => {
   expect(animationSettings.springOvershoot).toBe(1);
 });
 

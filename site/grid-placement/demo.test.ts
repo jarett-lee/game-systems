@@ -165,20 +165,20 @@ describe("covering one item", () => {
     demo.release({ x: l.x + 10, y: l.y + 10 });
   }
 
-  test("swaps it out by default", () => {
+  test("pushes it aside by default", () => {
     const demo = demoWithShowreelLayout();
-    dropDotOntoL(demo);
-    expect(demo.inventory.hand?.itemId).toBe("L3");
-  });
-
-  test("pushes it aside when set to push", () => {
-    const demo = demoWithShowreelLayout();
-    demo.oneCovered = "push";
     dropDotOntoL(demo);
 
     expect(demo.inventory.hand).toBeNull();
     expect(demo.message).toBe("Pushed the L 3-piece aside");
     expect(demo.inventory.placements).toContainEqual({ itemId: "dot-3", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 });
+  });
+
+  test("swaps it out when set to swap", () => {
+    const demo = demoWithShowreelLayout();
+    demo.oneCovered = "swap";
+    dropDotOntoL(demo);
+    expect(demo.inventory.hand?.itemId).toBe("L3");
   });
 });
 
@@ -358,7 +358,7 @@ describe("preview animation", () => {
     expect(demo.previewMotions(target, 1000).get("I3")).toMatchObject({ offset: { x: 0, y: -demo.layout.pitch } });
   });
 
-  test("the preview keeps playing while the target stays the same, and plays again when it changes", () => {
+  test("the preview keeps playing while the target stays the same, and plays again when the preview comes back", () => {
     const demo = demoWithShowreelLayout();
     const target = hoverBarOffTheTop(demo);
     demo.previewMotions(target, 1000);
@@ -393,8 +393,7 @@ describe("preview animation", () => {
   test("pieces that would be pushed slide from their spot to where they'd go", () => {
     const demo = demoWithShowreelLayout();
     const target = hoverDominoOverDots(demo);
-    expect(target?.outcome.kind).toBe("pushed");
-    if (target?.outcome.kind !== "pushed") return;
+    if (target?.outcome.kind !== "pushed") throw new Error("expected a push");
 
     const motions = demo.previewMotions(target, 1000);
     const stash = frameFor(demo.layout, "stash");
@@ -475,9 +474,11 @@ describe("pushed pieces that turn", () => {
 
   test("the push lays the bar flat", () => {
     const target = hoverDominoBesideBar(demoWithShowreelLayout());
-    expect(target?.outcome).toMatchObject({ kind: "pushed", pushed: [{ itemId: "I3", origin: { x: 0, y: 0 }, rotation: expect.any(Number) }] });
-    if (target?.outcome.kind !== "pushed") return;
-    expect(target.outcome.pushed[0]?.rotation).not.toBe(0);
+    if (target?.outcome.kind !== "pushed") throw new Error("expected a push");
+    const [bar] = target.outcome.pushed;
+
+    expect(bar).toMatchObject({ itemId: "I3", origin: { x: 0, y: 0 } });
+    expect([1, 3]).toContain(bar?.rotation);
   });
 
   test("the preview turns the piece a quarter turn while it slides", () => {

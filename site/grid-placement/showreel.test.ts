@@ -1,42 +1,34 @@
 import { expect, test } from "vitest";
 import { defaultSizes } from "./catalog";
 import { Demo } from "./demo";
-import { cellCenter, frameFor } from "./layout";
-import { prepareShowreel, showreel } from "./showreel";
+import { act, prepareShowreel, showreel } from "./showreel";
 
-test("the Showreel shows a place, a push preview, a swap, and a move between grids", () => {
+test("the Showreel shows a place, both kinds of push, a swap, and a move between grids", () => {
   const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
   prepareShowreel(demo);
   const shown: string[] = [];
 
   for (const step of showreel) {
-    if (step.do === "press") demo.press(cellCenter(demo.layout, frameFor(demo.layout, step.at.grid), step.at.cell));
-    if (step.do === "move") {
-      demo.move(cellCenter(demo.layout, frameFor(demo.layout, step.to.grid), step.to.cell));
+    act(demo, step);
+    if (step.do === "move" || step.do === "rotate") {
       const target = demo.target();
       if (target) shown.push(`over:${target.outcome.kind}`);
     }
-    if (step.do === "rotate") {
-      demo.rotate();
-      const target = demo.target();
-      if (target) shown.push(`over:${target.outcome.kind}`);
-    }
-    if (step.do === "release" && demo.pointer) {
-      demo.release(demo.pointer);
-      shown.push(demo.message);
-    }
+    if (step.do === "release") shown.push(demo.message);
   }
 
   expect(shown).toEqual([
     "over:placed",
-    "over:swapped",
+    "over:pushed",
     "over:placed",
     "Placed",
     "over:pushed",
     "over:placed",
     "Placed",
+    "over:pushed",
+    "Pushed the dot aside",
     "over:swapped",
-    "Swapped: the dot popped out",
+    "Swapped: the I 3-piece popped out",
     "over:placed",
     "Placed",
     "over:placed",
@@ -44,4 +36,5 @@ test("the Showreel shows a place, a push preview, a swap, and a move between gri
     "Placed",
   ]);
   expect(demo.inventory.hand).toBeNull();
+  expect(demo.oneCovered).toBe("push");
 });

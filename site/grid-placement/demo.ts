@@ -76,7 +76,7 @@ export class Demo {
   grabOffset: Point = { x: 0, y: 0 };
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
-  oneCovered: DropRules["oneCovered"] = "swap";
+  oneCovered: DropRules["oneCovered"] = "push";
   nudgeAnimation: NudgeAnimation = "slide";
   motions: Motion[] = [];
   spin: Spin | null = null;
