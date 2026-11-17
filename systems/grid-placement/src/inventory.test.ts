@@ -351,4 +351,16 @@ describe("nudging to free Cells", () => {
     expect(nudgeToFree(start, "tray", { x: 0, y: 0 }, 1)).toBeNull();
     expect(nudgeToFree(start, "tray", { x: 0, y: 0 }, 2)).toEqual({ x: 2, y: 0 });
   });
+
+  test("with unlimited reach, finds the nearest free spot anywhere in the Grid", () => {
+    const dots = ["a", "b", "c", "held"].map((id) => ({ id, footprint: [{ x: 0, y: 0 }] }));
+    let inventory = createInventory([{ id: "tray", width: 6, height: 1 }], dots);
+    inventory = placedAt(inventory, "a", "tray", 0, 0);
+    inventory = placedAt(inventory, "b", "tray", 1, 0);
+    inventory = placedAt(inventory, "c", "tray", 2, 0);
+    const start = holding(inventory, "held");
+
+    expect(nudgeToFree(start, "tray", { x: 0, y: 0 }, Infinity)).toEqual({ x: 3, y: 0 });
+    expect(nudgeToFree({ ...start, grids: [{ id: "tray", width: 3, height: 1 }] }, "tray", { x: 0, y: 0 }, Infinity)).toBeNull();
+  });
 });

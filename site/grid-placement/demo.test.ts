@@ -170,6 +170,7 @@ describe("always nudge", () => {
   test("swaps when nothing within reach is free", () => {
     const demo = demoWithShowreelLayout();
     demo.alwaysNudge = true;
+    demo.nudgeReach = 1;
     demo.reset(defaultSizes, [
       { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
       { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
@@ -294,5 +295,89 @@ describe("nudge animation", () => {
     demo.nudgeAnimation = "none";
     nudgedDrop(demo);
     expect(demo.motions).toEqual([]);
+  });
+});
+
+describe("preview animation", () => {
+  function hoverDotOverL(demo: Demo) {
+    demo.alwaysNudge = true;
+    const stash = frameFor(demo.layout, "stash");
+    const dot = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
+    const l = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: dot.x + 10, y: dot.y + 10 });
+    demo.move({ x: l.x + 10, y: l.y + 10 });
+    return demo.target();
+  }
+
+  function hoverDominoOverDots(demo: Demo) {
+    demo.reset(defaultSizes, [
+      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 3 }, rotation: 0 },
+    ]);
+    const stash = frameFor(demo.layout, "stash");
+    const domino = cellOrigin(demo.layout, stash, { x: 0, y: 3 });
+    const dots = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: domino.x + 10, y: domino.y + 10 });
+    demo.move({ x: dots.x + 10, y: dots.y + 10 });
+    return demo.target();
+  }
+
+  test("nudge reach is unlimited by default", () => {
+    expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).nudgeReach).toBe(Infinity);
+  });
+
+  test("the preview slides from where the piece is aimed to where it would be nudged", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDotOverL(demo);
+
+    expect(demo.previewMotions(target, 1000).get("dot-3")).toMatchObject({ offset: { x: -demo.layout.pitch, y: 0 } });
+  });
+
+  test("the preview keeps playing while the target stays the same, and plays again when it changes", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDotOverL(demo);
+    demo.previewMotions(target, 1000);
+
+    expect(demo.previewMotions(target, 5000).size).toBe(0);
+    demo.previewMotions(null, 5001);
+    expect(demo.previewMotions(target, 5002).get("dot-3")).toMatchObject({ offset: { x: -demo.layout.pitch, y: 0 } });
+  });
+
+  test("pieces that would be pushed slide from their spot to where they'd go", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDominoOverDots(demo);
+    expect(target?.outcome.kind).toBe("pushed");
+    if (target?.outcome.kind !== "pushed") return;
+
+    const motions = demo.previewMotions(target, 1000);
+    const stash = frameFor(demo.layout, "stash");
+    for (const destination of target.outcome.pushed) {
+      const was = demo.inventory.placements.find((placement) => placement.itemId === destination.itemId);
+      if (!was) throw new Error("missing placement");
+      const from = cellOrigin(demo.layout, stash, was.origin);
+      const to = cellOrigin(demo.layout, stash, destination.origin);
+      expect(motions.get(destination.itemId)).toMatchObject({ offset: { x: from.x - to.x, y: from.y - to.y } });
+    }
+  });
+
+  test("pushed pieces don't slide a second time when the drop lands after the preview finished", () => {
+    const demo = demoWithShowreelLayout();
+    demo.clock = () => 5000;
+    const target = hoverDominoOverDots(demo);
+    demo.previewMotions(target, 1000);
+    const stash = frameFor(demo.layout, "stash");
+    const dots = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+
+    demo.release({ x: dots.x + 10, y: dots.y + 10 });
+
+    expect(demo.message).toMatch(/^Pushed/);
+    expect(demo.motions).toEqual([]);
+  });
+
+  test("choosing none turns the preview animation off", () => {
+    const demo = demoWithShowreelLayout();
+    demo.nudgeAnimation = "none";
+    expect(demo.previewMotions(hoverDotOverL(demo), 1000).size).toBe(0);
   });
 });

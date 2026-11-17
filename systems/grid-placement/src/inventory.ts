@@ -114,9 +114,11 @@ export function nudgeToFree(
   reach: number,
   toward: Cell = { x: 0, y: 0 },
 ): Cell | null {
+  const grid = findGrid(inventory, gridId);
+  const limit = Math.min(reach, Math.max(grid.width, grid.height));
   const candidates: Cell[] = [];
-  for (let dy = -reach; dy <= reach; dy++) {
-    for (let dx = -reach; dx <= reach; dx++) candidates.push({ x: dx, y: dy });
+  for (let dy = -limit; dy <= limit; dy++) {
+    for (let dx = -limit; dx <= limit; dx++) candidates.push({ x: dx, y: dy });
   }
   const steps = (shift: Cell) => Math.abs(shift.x) + Math.abs(shift.y);
   const lean = (shift: Cell) => shift.x * toward.x + shift.y * toward.y;

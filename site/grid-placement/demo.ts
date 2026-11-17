@@ -32,11 +32,11 @@ import {
 
 export type Target = {
   readonly frame: GridFrame;
+  readonly aimed: Cell;
   readonly origin: Cell;
   readonly nudged: boolean;
   readonly outcome: DropOutcome;
 };
-
 
 export type HoldBy = "where grabbed" | "item center";
 
@@ -58,9 +58,10 @@ export class Demo {
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
   alwaysNudge = true;
-  nudgeReach = 1;
+  nudgeReach = Infinity;
   nudgeAnimation: NudgeAnimation = "spring";
   motions: Motion[] = [];
+  private previews = new Map<string, { key: string; motion: Motion }>();
   clock: () => number = () => performance.now();
   private pickedUpThisPress = false;
   message = "Drag an item. R or right-click rotates it, E rotates it back.";
@@ -147,7 +148,8 @@ export class Demo {
     const id = frame.grid.id;
     const outcome = previewDrop(this.inventory, id, inside);
     const moved = inside.x !== raw.x || inside.y !== raw.y;
-    if (!this.alwaysNudge || outcome.kind === "placed") return { frame, origin: inside, nudged: moved, outcome };
+    const kept = { frame, aimed: raw, origin: inside, nudged: moved, outcome };
+    if (!this.alwaysNudge || outcome.kind === "placed") return kept;
 
     const center = cellOrigin(this.layout, frame, cell);
     const lean = {
@@ -155,8 +157,8 @@ export class Demo {
       y: (anchor.y - (center.y + this.layout.cellSize / 2)) / this.layout.pitch,
     };
     const free = nudgeToFree(this.inventory, id, inside, this.nudgeReach, lean);
-    if (!free) return { frame, origin: inside, nudged: moved, outcome };
-    return { frame, origin: free, nudged: true, outcome: previewDrop(this.inventory, id, free) };
+    if (!free) return kept;
+    return { frame, aimed: raw, origin: free, nudged: true, outcome: previewDrop(this.inventory, id, free) };
   }
 
   press(point: Point): void {
@@ -206,6 +208,7 @@ export class Demo {
     const result = drop(this.inventory, target.frame.grid.id, target.origin);
     this.inventory = result.inventory;
     this.animateDrop(before, target, letGoAt, result.outcome);
+    this.previews.clear();
     this.message = describeDrop(result.outcome);
     if (result.outcome.kind === "swapped") {
       this.grabIndex = 0;
@@ -236,12 +239,60 @@ export class Demo {
     }
     if (outcome.kind !== "pushed") return;
     for (const moved of outcome.pushed) {
+      const previewed = this.previews.get(moved.itemId);
+      if (previewed) {
+        const frame = motionAt(previewed.motion, start);
+        if (frame) this.motions.push({ ...previewed.motion, offset: frame.offset, start, animation });
+        continue;
+      }
       const was = before.placements.find((placement) => placement.itemId === moved.itemId);
       if (!was) continue;
       const from = cellOrigin(this.layout, target.frame, was.origin);
       const to = cellOrigin(this.layout, target.frame, moved.origin);
       this.motions.push({ itemId: moved.itemId, offset: { x: from.x - to.x, y: from.y - to.y }, start, animation });
     }
+  }
+
+  previewMotions(target: Target | null, now: number): Map<string, MotionFrame> {
+    const frames = new Map<string, MotionFrame>();
+    const seen = new Set<string>();
+    const animation = this.nudgeAnimation;
+    const hand = this.inventory.hand;
+    const track = (id: string, key: string, from: Point, to: Point) => {
+      if (animation === "none") return;
+      seen.add(id);
+      let entry = this.previews.get(id);
+      if (!entry || entry.key !== key) {
+        entry = { key, motion: { itemId: id, offset: { x: from.x - to.x, y: from.y - to.y }, start: now, animation } };
+        this.previews.set(id, entry);
+      }
+      const frame = motionAt(entry.motion, now);
+      if (frame) frames.set(id, frame);
+    };
+    if (target && hand && target.nudged) {
+      const key = [target.frame.grid.id, hand.rotation, target.aimed.x, target.aimed.y, target.origin.x, target.origin.y].join();
+      track(
+        hand.itemId,
+        key,
+        cellOrigin(this.layout, target.frame, target.aimed),
+        cellOrigin(this.layout, target.frame, target.origin),
+      );
+    }
+    if (target?.outcome.kind === "pushed") {
+      for (const moved of target.outcome.pushed) {
+        const was = this.inventory.placements.find((placement) => placement.itemId === moved.itemId);
+        if (!was) continue;
+        const key = [was.origin.x, was.origin.y, moved.origin.x, moved.origin.y].join();
+        track(
+          moved.itemId,
+          key,
+          cellOrigin(this.layout, target.frame, was.origin),
+          cellOrigin(this.layout, target.frame, moved.origin),
+        );
+      }
+    }
+    for (const id of this.previews.keys()) if (!seen.has(id)) this.previews.delete(id);
+    return frames;
   }
 
   motionFor(itemId: string, now: number): MotionFrame | null {
