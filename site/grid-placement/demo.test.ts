@@ -7,6 +7,7 @@ function demoWithShowreelLayout(): Demo {
   const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
   demo.reset(defaultSizes, showreelLayout);
   demo.holdBy = "where grabbed";
+  demo.alwaysNudge = false;
   return demo;
 }
 
@@ -152,6 +153,117 @@ describe("rotating while holding", () => {
     expect(demo.inventory.hand?.rotation).toBe(3);
     const corner = demo.heldCorner();
     expect(corner && { x: grab.x - corner.x, y: grab.y - corner.y }).toEqual({ x: 20, y: demo.layout.cellSize - 10 });
+  });
+});
+
+describe("always nudge", () => {
+  function dropDotOntoL(demo: Demo) {
+    const stash = frameFor(demo.layout, "stash");
+    const dot = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
+    const l = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: dot.x + 10, y: dot.y + 10 });
+    demo.move({ x: l.x + 10, y: l.y + 10 });
+    const target = demo.target();
+    demo.release({ x: l.x + 10, y: l.y + 10 });
+    return target;
+  }
+
+  test("is on by default, reaching one cell", () => {
+    const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
+    expect(demo.alwaysNudge).toBe(true);
+    expect(demo.nudgeReach).toBe(1);
+  });
+
+  test("slides the piece to a free spot next to it instead of swapping", () => {
+    const demo = demoWithShowreelLayout();
+    demo.alwaysNudge = true;
+
+    expect(dropDotOntoL(demo)).toMatchObject({ aimed: { x: 0, y: 0 }, origin: { x: 1, y: 0 }, nudged: true, outcome: { kind: "placed" } });
+    expect(demo.inventory.hand).toBeNull();
+    expect(demo.inventory.placements).toContainEqual({ itemId: "dot-3", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 });
+  });
+
+  test("swaps when nothing within reach is free", () => {
+    const demo = demoWithShowreelLayout();
+    demo.alwaysNudge = true;
+    demo.reset(defaultSizes, [
+      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 1 }, rotation: 0 },
+      { itemId: "dot-3", gridId: "stash", origin: { x: 3, y: 3 }, rotation: 0 },
+    ]);
+
+    expect(dropDotOntoL(demo)).toMatchObject({ nudged: false, outcome: { kind: "swapped" } });
+  });
+
+  test("still pushes when the piece covers several others", () => {
+    const demo = demoWithShowreelLayout();
+    demo.alwaysNudge = true;
+    demo.reset(defaultSizes, [
+      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 3 }, rotation: 0 },
+    ]);
+    const stash = frameFor(demo.layout, "stash");
+    const domino = cellOrigin(demo.layout, stash, { x: 0, y: 3 });
+    const dots = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: domino.x + 10, y: domino.y + 10 });
+    demo.move({ x: dots.x + 10, y: dots.y + 10 });
+
+    expect(demo.target()).toMatchObject({ nudged: false, outcome: { kind: "pushed" } });
+  });
+
+  test("when off, swaps right away", () => {
+    const demo = demoWithShowreelLayout();
+    expect(dropDotOntoL(demo)).toMatchObject({ nudged: false, outcome: { kind: "swapped" } });
+  });
+});
+
+describe("rotation animation", () => {
+  function holdBar(demo: Demo): void {
+    const backpack = frameFor(demo.layout, "backpack");
+    const barTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    demo.press({ x: barTop.x + 10, y: barTop.y + 10 });
+  }
+
+  test("a turn starts drawn at the old angle and settles at the new one", () => {
+    const demo = demoWithShowreelLayout();
+    demo.clock = () => 1000;
+    holdBar(demo);
+
+    demo.rotate("clockwise");
+
+    expect(demo.spinFor(1000)?.angle).toBeCloseTo(-Math.PI / 2);
+    expect(demo.spinFor(9000)).toBeNull();
+  });
+
+  test("turning back starts from the other side", () => {
+    const demo = demoWithShowreelLayout();
+    demo.clock = () => 1000;
+    holdBar(demo);
+
+    demo.rotate("counter-clockwise");
+
+    expect(demo.spinFor(1000)?.angle).toBeCloseTo(Math.PI / 2);
+  });
+
+  test("quick turns add up from where the piece is drawn", () => {
+    const demo = demoWithShowreelLayout();
+    demo.clock = () => 1000;
+    holdBar(demo);
+
+    demo.rotate("clockwise");
+    demo.rotate("clockwise");
+
+    expect(demo.spinFor(1000)?.angle).toBeCloseTo(-Math.PI);
+  });
+
+  test("choosing none turns it off", () => {
+    const demo = demoWithShowreelLayout();
+    demo.nudgeAnimation = "none";
+    holdBar(demo);
+    demo.rotate("clockwise");
+    expect(demo.spinFor(demo.clock())).toBeNull();
   });
 });
 

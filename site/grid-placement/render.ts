@@ -222,9 +222,17 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
       x: corner.x + (cell.x - grabbed.x) * layout.pitch,
       y: corner.y + (cell.y - grabbed.y) * layout.pitch,
     });
+    const spin = demo.spinFor(now);
+    ctx.save();
+    if (spin) {
+      ctx.translate(pointer.x, pointer.y);
+      ctx.rotate(spin.angle);
+      ctx.scale(spin.scale, spin.scale);
+      ctx.translate(-pointer.x, -pointer.y);
+    }
     ctx.globalAlpha = 0.88;
     drawItem(ctx, palette, layout, catalogItem(inventory.hand.itemId), held, at);
-    ctx.globalAlpha = 1;
+    ctx.restore();
     ctx.fillStyle = palette.coral;
     ctx.beginPath();
     ctx.arc(pointer.x, pointer.y, 6, 0, Math.PI * 2);

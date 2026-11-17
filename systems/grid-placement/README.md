@@ -11,7 +11,7 @@ Its words (Grid, Cell, Item, Footprint, Rotation, Placement, Hand, Pop out, Swap
 - **Several Grids**, such as a backpack and a stash. Items move between them.
 - **Swap**: dropping an Item where it covers exactly one other Item places it and pops the covered Item out into the Hand.
 - **Push**: dropping an Item where it covers two or more Items moves them to the nearest free spots in the same Grid. If they can't all move, the drop is rejected.
-- **Nudge**: if any Cell of the held Item is over a Grid, the Item is moved fully inside that Grid before it drops.
+- **Nudge**: if any Cell of the held Item is over a Grid, the Item is moved fully inside that Grid before it drops. With always-nudge (the Demo's default), a drop that would swap first slides the Item to the nearest free spot within reach (1 Cell by default); it swaps only when there's none.
 - **Return**: letting go where the Item can't land puts it back where it came from, or stows it if a swap took that spot.
 - **Pop out**: picking an Item up moves it from its Grid into the Hand.
 

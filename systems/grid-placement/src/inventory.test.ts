@@ -4,6 +4,7 @@ import {
   drop,
   itemAt,
   nudgeInside,
+  nudgeToFree,
   popOut,
   previewDrop,
   returnHeld,
@@ -300,5 +301,66 @@ describe("nudging inside a Grid", () => {
 
     expect(origin).toEqual({ x: 0, y: 0 });
     expect(origin && previewDrop(start, "pouch", origin)).toEqual({ kind: "rejected", reason: "out-of-bounds" });
+  });
+});
+
+describe("nudging to free Cells", () => {
+  test("finds the nearest spot within reach where the held Item lands without covering anything", () => {
+    const inventory = holding(placedAt(emptyInventory(), "potion", "backpack", 1, 0), "gem");
+
+    expect(nudgeToFree(inventory, "backpack", { x: 1, y: 0 }, 1)).toEqual({ x: 0, y: 0 });
+  });
+
+  test("breaks ties toward the side it leans to", () => {
+    const inventory = holding(placedAt(emptyInventory(), "potion", "backpack", 1, 0), "gem");
+
+    expect(nudgeToFree(inventory, "backpack", { x: 1, y: 0 }, 1, { x: 0.3, y: 0 })).toEqual({ x: 2, y: 0 });
+    expect(nudgeToFree(inventory, "backpack", { x: 1, y: 0 }, 1, { x: 0, y: 0.3 })).toEqual({ x: 1, y: 1 });
+  });
+
+  test("leaves a free spot where it is", () => {
+    expect(nudgeToFree(holding(emptyInventory(), "gem"), "backpack", { x: 1, y: 1 }, 1)).toEqual({ x: 1, y: 1 });
+  });
+
+  test("looks diagonally when the sides are taken", () => {
+    const dots = ["a", "b", "c", "d", "e", "held"].map((id) => ({ id, footprint: [{ x: 0, y: 0 }] }));
+    let inventory = createInventory([{ id: "board", width: 3, height: 3 }], dots);
+    for (const [id, x, y] of [["a", 1, 1], ["b", 0, 1], ["c", 2, 1], ["d", 1, 0], ["e", 1, 2]] as const) {
+      inventory = placedAt(inventory, id, "board", x, y);
+    }
+
+    expect(nudgeToFree(holding(inventory, "held"), "board", { x: 1, y: 1 }, 1)).toEqual({ x: 0, y: 0 });
+  });
+
+  test("gives up when nothing within reach is free", () => {
+    const tray = createInventory([{ id: "tray", width: 2, height: 1 }], [potion, sword, gem]);
+    let inventory = placedAt(tray, "potion", "tray", 0, 0);
+    inventory = placedAt(inventory, "gem", "tray", 1, 0);
+    const dot = { id: "dot", footprint: [{ x: 0, y: 0 }] };
+
+    expect(nudgeToFree(holding({ ...inventory, items: [...inventory.items, dot] }, "dot"), "tray", { x: 0, y: 0 }, 1)).toBeNull();
+  });
+
+  test("reaches farther when allowed", () => {
+    const dots = ["a", "b", "held"].map((id) => ({ id, footprint: [{ x: 0, y: 0 }] }));
+    let inventory = createInventory([{ id: "tray", width: 4, height: 1 }], dots);
+    inventory = placedAt(inventory, "a", "tray", 0, 0);
+    inventory = placedAt(inventory, "b", "tray", 1, 0);
+    const start = holding(inventory, "held");
+
+    expect(nudgeToFree(start, "tray", { x: 0, y: 0 }, 1)).toBeNull();
+    expect(nudgeToFree(start, "tray", { x: 0, y: 0 }, 2)).toEqual({ x: 2, y: 0 });
+  });
+
+  test("with unlimited reach, finds the nearest free spot anywhere in the Grid", () => {
+    const dots = ["a", "b", "c", "held"].map((id) => ({ id, footprint: [{ x: 0, y: 0 }] }));
+    let inventory = createInventory([{ id: "tray", width: 6, height: 1 }], dots);
+    inventory = placedAt(inventory, "a", "tray", 0, 0);
+    inventory = placedAt(inventory, "b", "tray", 1, 0);
+    inventory = placedAt(inventory, "c", "tray", 2, 0);
+    const start = holding(inventory, "held");
+
+    expect(nudgeToFree(start, "tray", { x: 0, y: 0 }, Infinity)).toEqual({ x: 3, y: 0 });
+    expect(nudgeToFree({ ...start, grids: [{ id: "tray", width: 3, height: 1 }] }, "tray", { x: 0, y: 0 }, Infinity)).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import {
   footprintBounds,
   itemAt,
   nudgeInside,
+  nudgeToFree,
   popOut,
   previewDrop,
   returnHeld,
@@ -18,7 +19,7 @@ import {
   type RotationDirection,
 } from "../../systems/grid-placement/src";
 import { catalog, catalogItem, type GridSizes } from "./catalog";
-import { motionAt, type Motion, type MotionFrame, type NudgeAnimation } from "./motion";
+import { motionAt, spinAt, type Motion, type MotionFrame, type NudgeAnimation, type Spin } from "./motion";
 import {
   cellOrigin,
   cellUnder,
@@ -56,8 +57,11 @@ export class Demo {
   grabOffset: Point = { x: 0, y: 0 };
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
+  alwaysNudge = true;
+  nudgeReach = 1;
   nudgeAnimation: NudgeAnimation = "slide";
   motions: Motion[] = [];
+  spin: Spin | null = null;
   private previews = new Map<string, { key: string; to: Point; motion: Motion }>();
   clock: () => number = () => performance.now();
   private pickedUpThisPress = false;
@@ -138,9 +142,22 @@ export class Demo {
       if (!inside) continue;
       const outcome = previewDrop(this.inventory, frame.grid.id, inside);
       const nudged = inside.x !== raw.x || inside.y !== raw.y;
-      return { frame, aimed: raw, origin: inside, nudged, outcome };
+      const kept = { frame, aimed: raw, origin: inside, nudged, outcome };
+      if (!this.alwaysNudge || outcome.kind !== "swapped") return kept;
+      const free = nudgeToFree(this.inventory, frame.grid.id, inside, this.nudgeReach, this.lean(frame, anchor, cell));
+      if (!free) return kept;
+      return { frame, aimed: raw, origin: free, nudged: true, outcome: previewDrop(this.inventory, frame.grid.id, free) };
     }
     return null;
+  }
+
+  private lean(frame: GridFrame, anchor: Point, cell: Cell): Cell {
+    const corner = cellOrigin(this.layout, frame, cell);
+    const middle = this.layout.cellSize / 2;
+    return {
+      x: (anchor.x - corner.x - middle) / this.layout.pitch,
+      y: (anchor.y - corner.y - middle) / this.layout.pitch,
+    };
   }
 
   press(point: Point): void {
@@ -323,10 +340,23 @@ export class Demo {
   rotate(direction: RotationDirection = "clockwise"): void {
     if (!this.inventory.hand) return;
     this.inventory = rotateHand(this.inventory, direction);
+    this.startSpin(direction === "clockwise" ? -Math.PI / 2 : Math.PI / 2);
     const { x, y } = this.grabOffset;
     const size = this.layout.cellSize;
     this.grabOffset = direction === "clockwise" ? { x: size - y, y: x } : { x: y, y: size - x };
     this.message = direction === "clockwise" ? "Rotated clockwise" : "Rotated counter-clockwise";
+  }
+
+  private startSpin(turn: number): void {
+    const now = this.clock();
+    const shown = this.spinFor(now)?.angle ?? 0;
+    this.spin = this.nudgeAnimation === "none" ? null : { angle: shown + turn, start: now, animation: this.nudgeAnimation };
+  }
+
+  spinFor(now: number): { angle: number; scale: number } | null {
+    const frame = this.spin && spinAt(this.spin, now);
+    if (!frame) this.spin = null;
+    return frame;
   }
 
   stowHeld(): void {

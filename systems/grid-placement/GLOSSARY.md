@@ -37,7 +37,7 @@ Moving an Item from a Grid into the Hand, either by picking it up or by being sw
 _Avoid_: Remove, eject, take
 
 **Swap**:
-Dropping the Item in Hand where its Footprint covers exactly one other Item: the dropped Item is placed and the covered Item pops out into the Hand. Covering two or more Items is a Push instead.
+Dropping the Item in Hand where its Footprint covers exactly one other Item: the dropped Item is placed and the covered Item pops out into the Hand. Covering two or more Items is a Push instead. With always-nudge, a Swap happens only when no Nudge onto nearby free Cells is possible.
 _Avoid_: Replace, exchange, bump
 
 **Push**:
@@ -45,7 +45,7 @@ Dropping the Item in Hand where its Footprint covers two or more Items: those It
 _Avoid_: Shove, bump, displace
 
 **Nudge**:
-Moving the Item in Hand fully inside a Grid when only part of its Footprint is over that Grid, so the drop can still happen.
+Moving the Item in Hand a short distance so it lands cleanly: fully inside a Grid when only part of its Footprint is over that Grid, or, with always-nudge, onto nearby free Cells instead of a Swap.
 _Avoid_: Clamp, snap, fit
 
 **Return**:

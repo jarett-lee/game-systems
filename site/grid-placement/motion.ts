@@ -36,14 +36,30 @@ const styles: Record<Motion["animation"], { duration: number; ease: (t: number) 
   pop: { duration: 260, ease: easeOutCubic, swell: 0.14 },
 };
 
-export function motionAt(motion: Motion, now: number): MotionFrame | null {
-  const style = styles[motion.animation];
-  const t = (now - motion.start) / style.duration;
+export type Spin = {
+  readonly angle: number;
+  readonly start: number;
+  readonly animation: Exclude<NudgeAnimation, "none">;
+};
+
+function settling(animation: Motion["animation"], start: number, now: number) {
+  const style = styles[animation];
+  const t = (now - start) / style.duration;
   if (t >= 1) return null;
   const progress = Math.max(0, t);
-  const remaining = 1 - style.ease(progress);
+  return { remaining: 1 - style.ease(progress), scale: 1 + style.swell * Math.sin(Math.PI * progress) };
+}
+
+export function motionAt(motion: Motion, now: number): MotionFrame | null {
+  const frame = settling(motion.animation, motion.start, now);
+  if (!frame) return null;
   return {
-    offset: { x: motion.offset.x * remaining, y: motion.offset.y * remaining },
-    scale: 1 + style.swell * Math.sin(Math.PI * progress),
+    offset: { x: motion.offset.x * frame.remaining, y: motion.offset.y * frame.remaining },
+    scale: frame.scale,
   };
+}
+
+export function spinAt(spin: Spin, now: number): { angle: number; scale: number } | null {
+  const frame = settling(spin.animation, spin.start, now);
+  return frame && { angle: spin.angle * frame.remaining, scale: frame.scale };
 }

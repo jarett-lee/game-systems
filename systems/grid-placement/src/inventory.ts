@@ -107,6 +107,30 @@ export function nudgeInside(inventory: Inventory, gridId: string, origin: Cell):
   return { x: clamp(origin.x, grid.width - width), y: clamp(origin.y, grid.height - height) };
 }
 
+export function nudgeToFree(
+  inventory: Inventory,
+  gridId: string,
+  origin: Cell,
+  reach: number,
+  toward: Cell = { x: 0, y: 0 },
+): Cell | null {
+  const grid = findGrid(inventory, gridId);
+  const limit = Math.min(reach, Math.max(grid.width, grid.height));
+  const candidates: Cell[] = [];
+  for (let dy = -limit; dy <= limit; dy++) {
+    for (let dx = -limit; dx <= limit; dx++) candidates.push({ x: dx, y: dy });
+  }
+  const steps = (shift: Cell) => Math.abs(shift.x) + Math.abs(shift.y);
+  const lean = (shift: Cell) => shift.x * toward.x + shift.y * toward.y;
+  candidates.sort((a, b) => steps(a) - steps(b) || lean(b) - lean(a) || a.y - b.y || a.x - b.x);
+
+  for (const shift of candidates) {
+    const nudged = { x: origin.x + shift.x, y: origin.y + shift.y };
+    if (previewDrop(inventory, gridId, nudged).kind === "placed") return nudged;
+  }
+  return null;
+}
+
 function fits(inventory: Inventory, placement: Placement): boolean {
   const cells = placementCells(inventory, placement);
   const grid = findGrid(inventory, placement.gridId);
