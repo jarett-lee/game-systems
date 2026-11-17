@@ -293,6 +293,12 @@ describe("nudging inside a Grid", () => {
     expect(nudgeInside(holding(emptyInventory(), "sword"), "backpack", { x: 5, y: 0 })).toBeNull();
   });
 
+  test("with always, brings the held Item inside even when none of it is over the Grid", () => {
+    const start = holding(emptyInventory(), "sword");
+    expect(nudgeInside(start, "backpack", { x: 9, y: 7 }, "always")).toEqual({ x: 3, y: 0 });
+    expect(nudgeInside(start, "backpack", { x: -4, y: 1 }, "always")).toEqual({ x: 0, y: 0 });
+  });
+
   test("still lets the drop reject an Item too big for the Grid", () => {
     const small = createInventory([{ id: "pouch", width: 2, height: 2 }], [sword]);
     const start = holding(small, "sword");

@@ -2,6 +2,7 @@ import { Pane } from "tweakpane";
 import { mountBackdrop } from "../shared/backdrop";
 import { defaultSizes, type GridSizes } from "./catalog";
 import { Demo } from "./demo";
+import { nudgeAnimations } from "./motion";
 import { readPalette, render } from "./render";
 import { playShowreel } from "./showreel";
 
@@ -161,6 +162,11 @@ pane.addBinding(demo, "pickUpBy", {
   label: "pick up by",
   options: { "press and drag": "press and drag", click: "click" },
 });
+pane.addBinding(demo, "alwaysNudge", { label: "always nudge" });
+pane.addBinding(demo, "nudgeAnimation", {
+  label: "nudge animation",
+  options: Object.fromEntries(nudgeAnimations.map((animation) => [animation, animation])),
+});
 pane.addBinding(demo, "holdBy", {
   label: "hold item by",
   options: { "where grabbed": "where grabbed", "item center": "item center" },
@@ -172,7 +178,7 @@ pane.addButton({ title: "Reset items" }).on("click", resetFromSettings);
 pane.addButton({ title: "Play Showreel" }).on("click", () => void runShowreel());
 
 function frame(): void {
-  render(ctx, palette, demo);
+  render(ctx, palette, demo, performance.now());
   status.textContent = demo.message;
   requestAnimationFrame(frame);
 }

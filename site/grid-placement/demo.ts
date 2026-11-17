@@ -18,6 +18,7 @@ import {
   type RotationDirection,
 } from "../../systems/grid-placement/src";
 import { catalog, catalogItem, type GridSizes } from "./catalog";
+import { motionAt, type Motion, type MotionFrame, type NudgeAnimation } from "./motion";
 import {
   cellOrigin,
   cellUnder,
@@ -28,7 +29,18 @@ import {
   type Point,
 } from "./layout";
 
-export type Target = { readonly frame: GridFrame; readonly origin: Cell; readonly outcome: DropOutcome };
+export type Target = {
+  readonly frame: GridFrame;
+  readonly origin: Cell;
+  readonly nudged: boolean;
+  readonly outcome: DropOutcome;
+};
+
+function distanceTo(frame: GridFrame, point: Point): number {
+  const dx = Math.max(frame.x - point.x, 0, point.x - (frame.x + frame.width));
+  const dy = Math.max(frame.y - point.y, 0, point.y - (frame.y + frame.height));
+  return Math.hypot(dx, dy);
+}
 
 export type HoldBy = "where grabbed" | "item center";
 
@@ -47,8 +59,12 @@ export class Demo {
   pointer: Point | null = null;
   grabIndex = 0;
   grabOffset: Point = { x: 0, y: 0 };
-  holdBy: HoldBy = "where grabbed";
+  holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
+  alwaysNudge = true;
+  nudgeAnimation: NudgeAnimation = "spring";
+  motions: Motion[] = [];
+  clock: () => number = () => performance.now();
   private pickedUpThisPress = false;
   message = "Drag an item. R or right-click rotates it, E rotates it back.";
 
@@ -110,6 +126,15 @@ export class Demo {
     };
   }
 
+  private targetAt(frame: GridFrame, origin: Cell, raw: Cell): Target {
+    return {
+      frame,
+      origin,
+      nudged: origin.x !== raw.x || origin.y !== raw.y,
+      outcome: previewDrop(this.inventory, frame.grid.id, origin),
+    };
+  }
+
   target(): Target | null {
     const footprint = this.heldFootprint();
     const corner = this.heldCorner();
@@ -120,12 +145,19 @@ export class Demo {
     const frames = [...this.layout.frames].sort(
       (a, b) => Number(insideFrame(b, anchor)) - Number(insideFrame(a, anchor)),
     );
-    for (const frame of frames) {
+    const rawOrigin = (frame: GridFrame) => {
       const cell = cellUnder(this.layout, frame, anchor);
-      const origin = nudgeInside(this.inventory, frame.grid.id, { x: cell.x - grabbed.x, y: cell.y - grabbed.y });
-      if (origin) return { frame, origin, outcome: previewDrop(this.inventory, frame.grid.id, origin) };
+      return { x: cell.x - grabbed.x, y: cell.y - grabbed.y };
+    };
+    for (const frame of frames) {
+      const origin = nudgeInside(this.inventory, frame.grid.id, rawOrigin(frame));
+      if (origin) return this.targetAt(frame, origin, rawOrigin(frame));
     }
-    return null;
+    if (!this.alwaysNudge) return null;
+    const nearest = [...this.layout.frames].sort((a, b) => distanceTo(a, anchor) - distanceTo(b, anchor))[0];
+    if (!nearest) return null;
+    const origin = nudgeInside(this.inventory, nearest.grid.id, rawOrigin(nearest), "always");
+    return origin ? this.targetAt(nearest, origin, rawOrigin(nearest)) : null;
   }
 
   press(point: Point): void {
@@ -150,8 +182,9 @@ export class Demo {
     this.inventory = result.inventory;
     if (this.holdBy === "item center") this.holdByCenter();
     this.pickedUpThisPress = true;
+    const name = catalogItem(itemId).name;
     this.message =
-      this.pickUpBy === "click" ? `Picked up the ${itemId}. Click again to drop it` : `Picked up the ${itemId}`;
+      this.pickUpBy === "click" ? `Picked up the ${name}. Click again to drop it` : `Picked up the ${name}`;
   }
 
   move(point: Point): void {
@@ -169,13 +202,53 @@ export class Demo {
       this.sendBack(target ? describeDrop(target.outcome) : "Dropped outside the grids");
       return;
     }
+    const before = this.inventory;
+    const letGoAt = this.heldOriginPoint();
     const result = drop(this.inventory, target.frame.grid.id, target.origin);
     this.inventory = result.inventory;
+    this.animateDrop(before, target, letGoAt, result.outcome);
     this.message = describeDrop(result.outcome);
     if (result.outcome.kind === "swapped") {
       this.grabIndex = 0;
       this.holdByCenter();
     }
+  }
+
+  private heldOriginPoint(): Point | null {
+    const corner = this.heldCorner();
+    const grabbed = this.heldFootprint()?.[this.grabIndex];
+    if (!corner || !grabbed) return null;
+    return { x: corner.x - grabbed.x * this.layout.pitch, y: corner.y - grabbed.y * this.layout.pitch };
+  }
+
+  private animateDrop(before: Inventory, target: Target, letGoAt: Point | null, outcome: DropOutcome): void {
+    const animation = this.nudgeAnimation;
+    if (animation === "none") return;
+    const start = this.clock();
+    const { hand } = before;
+    if (target.nudged && hand && letGoAt) {
+      const landed = cellOrigin(this.layout, target.frame, target.origin);
+      this.motions.push({
+        itemId: hand.itemId,
+        offset: { x: letGoAt.x - landed.x, y: letGoAt.y - landed.y },
+        start,
+        animation,
+      });
+    }
+    if (outcome.kind !== "pushed") return;
+    for (const moved of outcome.pushed) {
+      const was = before.placements.find((placement) => placement.itemId === moved.itemId);
+      if (!was) continue;
+      const from = cellOrigin(this.layout, target.frame, was.origin);
+      const to = cellOrigin(this.layout, target.frame, moved.origin);
+      this.motions.push({ itemId: moved.itemId, offset: { x: from.x - to.x, y: from.y - to.y }, start, animation });
+    }
+  }
+
+  motionFor(itemId: string, now: number): MotionFrame | null {
+    this.motions = this.motions.filter((motion) => motionAt(motion, now) !== null);
+    const motion = this.motions.find((candidate) => candidate.itemId === itemId);
+    return motion ? motionAt(motion, now) : null;
   }
 
   private sendBack(reason: string): void {
@@ -215,9 +288,9 @@ export function describeDrop(outcome: DropOutcome): string {
     case "placed":
       return "Placed";
     case "swapped":
-      return `Swapped: the ${outcome.poppedItemId} popped out`;
+      return `Swapped: the ${catalogItem(outcome.poppedItemId).name} popped out`;
     case "pushed":
-      return `Pushed the ${outcome.pushed.map((placement) => placement.itemId).join(" and the ")} aside`;
+      return `Pushed the ${outcome.pushed.map((placement) => catalogItem(placement.itemId).name).join(" and the ")} aside`;
     case "rejected":
       if (outcome.reason === "no-room-to-push") return "Rejected: no room to push those items aside";
       if (outcome.reason === "out-of-bounds") return "Rejected: off the edge of the grid";

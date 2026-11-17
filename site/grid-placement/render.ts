@@ -167,7 +167,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, palette: Palette, layout: Layo
   ctx.globalAlpha = 1;
 }
 
-export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: Demo): void {
+export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: Demo, now: number): void {
   const { layout, inventory } = demo;
   ctx.clearRect(0, 0, layout.width, layout.height);
 
@@ -180,11 +180,21 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
   for (const placement of inventory.placements) {
     const frame = layout.frames.find((candidate) => candidate.grid.id === placement.gridId);
     if (!frame) continue;
+    const cells = placementCells(inventory, placement);
+    const at = (cell: Cell) => cellOrigin(layout, frame, cell);
+    const motion = demo.motionFor(placement.itemId, now);
+    ctx.save();
     ctx.globalAlpha = pushedIds.includes(placement.itemId) ? 0.22 : 1;
-    drawItem(ctx, palette, layout, catalogItem(placement.itemId), placementCells(inventory, placement), (cell) =>
-      cellOrigin(layout, frame, cell),
-    );
-    ctx.globalAlpha = 1;
+    if (motion) {
+      const box = bounds(mergedRects(cells, layout, at));
+      const cx = box.x + box.width / 2;
+      const cy = box.y + box.height / 2;
+      ctx.translate(cx + motion.offset.x, cy + motion.offset.y);
+      ctx.scale(motion.scale, motion.scale);
+      ctx.translate(-cx, -cy);
+    }
+    drawItem(ctx, palette, layout, catalogItem(placement.itemId), cells, at);
+    ctx.restore();
   }
 
   if (held && target) drawTarget(ctx, palette, demo, target, held);

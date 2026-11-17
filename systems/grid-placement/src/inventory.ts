@@ -95,12 +95,19 @@ function itemsUnder(inventory: Inventory, gridId: string, cells: readonly Cell[]
   return [...found];
 }
 
-export function nudgeInside(inventory: Inventory, gridId: string, origin: Cell): Cell | null {
+export type NudgeMode = "when overlapping" | "always";
+
+export function nudgeInside(
+  inventory: Inventory,
+  gridId: string,
+  origin: Cell,
+  mode: NudgeMode = "when overlapping",
+): Cell | null {
   const { hand } = inventory;
   if (!hand) return null;
   const grid = findGrid(inventory, gridId);
   const cells = cellsCovered(inventory, hand.itemId, origin, hand.rotation);
-  if (!cells.some((cell) => insideGrid(grid, [cell]))) return null;
+  if (mode === "when overlapping" && !cells.some((cell) => insideGrid(grid, [cell]))) return null;
 
   const { width, height } = footprintBounds(rotateFootprint(findItem(inventory, hand.itemId).footprint, hand.rotation));
   const clamp = (value: number, room: number) => Math.max(0, Math.min(value, room));

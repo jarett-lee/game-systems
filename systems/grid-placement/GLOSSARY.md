@@ -45,7 +45,7 @@ Dropping the Item in Hand where its Footprint covers two or more Items: those It
 _Avoid_: Shove, bump, displace
 
 **Nudge**:
-Moving the Item in Hand fully inside a Grid when only part of its Footprint is over that Grid, so the drop can still happen.
+Moving the Item in Hand fully inside a Grid so the drop can still happen: when part of its Footprint is over that Grid, or, with always-nudge, wherever it's let go, into the nearest Grid.
 _Avoid_: Clamp, snap, fit
 
 **Return**:

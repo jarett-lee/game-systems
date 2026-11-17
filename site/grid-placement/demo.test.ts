@@ -6,42 +6,47 @@ import { cellOrigin, frameFor } from "./layout";
 function demoWithShowreelLayout(): Demo {
   const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
   demo.reset(defaultSizes, showreelLayout);
+  demo.holdBy = "where grabbed";
   return demo;
 }
+
+test("items are held by their center unless set otherwise", () => {
+  expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).holdBy).toBe("item center");
+});
 
 describe("grabbing an item", () => {
   test("the item stays exactly where it was when picked up off-center", () => {
     const demo = demoWithShowreelLayout();
     const backpack = frameFor(demo.layout, "backpack");
-    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const barTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
 
-    demo.press({ x: swordTop.x + 5, y: swordTop.y + 50 });
+    demo.press({ x: barTop.x + 5, y: barTop.y + 50 });
 
-    expect(demo.heldCorner()).toEqual(swordTop);
+    expect(demo.heldCorner()).toEqual(barTop);
   });
 
   test("the item follows the pointer by the same amount it moves", () => {
     const demo = demoWithShowreelLayout();
     const backpack = frameFor(demo.layout, "backpack");
-    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const barTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
 
-    demo.press({ x: swordTop.x + 5, y: swordTop.y + 50 });
-    demo.move({ x: swordTop.x + 5 + 37, y: swordTop.y + 50 - 12 });
+    demo.press({ x: barTop.x + 5, y: barTop.y + 50 });
+    demo.move({ x: barTop.x + 5 + 37, y: barTop.y + 50 - 12 });
 
-    expect(demo.heldCorner()).toEqual({ x: swordTop.x + 37, y: swordTop.y - 12 });
+    expect(demo.heldCorner()).toEqual({ x: barTop.x + 37, y: barTop.y - 12 });
   });
 
   test("dropping without moving puts it back where it was", () => {
     const demo = demoWithShowreelLayout();
     const backpack = frameFor(demo.layout, "backpack");
-    const swordMiddle = cellOrigin(demo.layout, backpack, { x: 2, y: 1 });
-    const point = { x: swordMiddle.x + demo.layout.cellSize - 2, y: swordMiddle.y + demo.layout.cellSize - 2 };
+    const barMiddle = cellOrigin(demo.layout, backpack, { x: 2, y: 1 });
+    const point = { x: barMiddle.x + demo.layout.cellSize - 2, y: barMiddle.y + demo.layout.cellSize - 2 };
 
     demo.press(point);
     demo.release(point);
 
     expect(demo.inventory.placements).toContainEqual({
-      itemId: "sword",
+      itemId: "I3",
       gridId: "backpack",
       origin: { x: 2, y: 0 },
       rotation: 0,
@@ -51,8 +56,8 @@ describe("grabbing an item", () => {
   test("the drop target follows where the item is drawn, not the pointer", () => {
     const demo = demoWithShowreelLayout();
     const backpack = frameFor(demo.layout, "backpack");
-    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
-    const grab = { x: swordTop.x + 4, y: swordTop.y + 4 };
+    const barTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const grab = { x: barTop.x + 4, y: barTop.y + 4 };
 
     demo.press(grab);
     demo.move({ x: grab.x + demo.layout.pitch * 0.6, y: grab.y });
@@ -62,18 +67,19 @@ describe("grabbing an item", () => {
 });
 
 describe("letting go where it can't land", () => {
-  test("outside the grids sends the item back to its original spot", () => {
+  test("with always-nudge off, outside the grids sends the item back to its original spot", () => {
     const demo = demoWithShowreelLayout();
+    demo.alwaysNudge = false;
     const backpack = frameFor(demo.layout, "backpack");
-    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const barTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
 
-    demo.press({ x: swordTop.x + 10, y: swordTop.y + 10 });
+    demo.press({ x: barTop.x + 10, y: barTop.y + 10 });
     demo.rotate();
     demo.release({ x: demo.layout.width + 400, y: demo.layout.height + 400 });
 
     expect(demo.inventory.hand).toBeNull();
     expect(demo.inventory.placements).toContainEqual({
-      itemId: "sword",
+      itemId: "I3",
       gridId: "backpack",
       origin: { x: 2, y: 0 },
       rotation: 0,
@@ -84,15 +90,15 @@ describe("letting go where it can't land", () => {
     const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
     const full = { backpackWidth: 2, backpackHeight: 2, stashWidth: 2, stashHeight: 2 };
     demo.reset(full, [
-      { itemId: "potion", gridId: "backpack", origin: { x: 0, y: 0 }, rotation: 0 },
-      { itemId: "gem", gridId: "backpack", origin: { x: 1, y: 0 }, rotation: 0 },
-      { itemId: "tonic", gridId: "backpack", origin: { x: 0, y: 1 }, rotation: 0 },
-      { itemId: "scroll", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-1", gridId: "backpack", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "backpack", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "dot-3", gridId: "backpack", origin: { x: 0, y: 1 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
     ]);
     const stash = frameFor(demo.layout, "stash");
     const backpack = frameFor(demo.layout, "backpack");
-    const scroll = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
-    const grab = { x: scroll.x + 10, y: scroll.y + 10 };
+    const domino = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    const grab = { x: domino.x + 10, y: domino.y + 10 };
     const over = cellOrigin(demo.layout, backpack, { x: 0, y: 0 });
 
     demo.press(grab);
@@ -100,7 +106,7 @@ describe("letting go where it can't land", () => {
 
     expect(demo.message).toBe("Rejected: no room to push those items aside, so it went back to its spot");
     expect(demo.inventory.placements).toContainEqual({
-      itemId: "scroll",
+      itemId: "domino",
       gridId: "stash",
       origin: { x: 0, y: 0 },
       rotation: 0,
@@ -112,8 +118,8 @@ describe("pushing", () => {
   test("dropping onto two items pushes them aside", () => {
     const demo = demoWithShowreelLayout();
     const backpack = frameFor(demo.layout, "backpack");
-    const scroll = cellOrigin(demo.layout, backpack, { x: 0, y: 3 });
-    const grab = { x: scroll.x + 10, y: scroll.y + 10 };
+    const domino = cellOrigin(demo.layout, backpack, { x: 0, y: 3 });
+    const grab = { x: domino.x + 10, y: domino.y + 10 };
     const target = cellOrigin(demo.layout, backpack, { x: 2, y: 1 });
 
     demo.press(grab);
@@ -122,9 +128,31 @@ describe("pushing", () => {
     expect(demo.message).toMatch(/^Pushed the /);
     expect(demo.inventory.hand).toBeNull();
     expect(demo.inventory.placements).toContainEqual({
-      itemId: "scroll",
+      itemId: "domino",
       gridId: "backpack",
       origin: { x: 2, y: 1 },
+      rotation: 0,
+    });
+  });
+});
+
+describe("always nudge", () => {
+  test("is on by default, so letting go outside the grids lands the item in the nearest grid", () => {
+    const demo = demoWithShowreelLayout();
+    const stash = frameFor(demo.layout, "stash");
+    const freeCorner = cellOrigin(demo.layout, stash, { x: 3, y: 0 });
+    const tonic = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
+    const grab = { x: tonic.x + 10, y: tonic.y + 10 };
+
+    demo.press(grab);
+    demo.move({ x: freeCorner.x + 300, y: freeCorner.y - 300 });
+    expect(demo.target()).toMatchObject({ origin: { x: 3, y: 0 }, nudged: true });
+
+    demo.release({ x: freeCorner.x + 300, y: freeCorner.y - 300 });
+    expect(demo.inventory.placements).toContainEqual({
+      itemId: "dot-3",
+      gridId: "stash",
+      origin: { x: 3, y: 0 },
       rotation: 0,
     });
   });
@@ -134,8 +162,8 @@ describe("rotating while holding", () => {
   test("E turns the other way, and the grab point stays under the pointer", () => {
     const demo = demoWithShowreelLayout();
     const backpack = frameFor(demo.layout, "backpack");
-    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
-    const grab = { x: swordTop.x + 10, y: swordTop.y + 20 };
+    const barTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const grab = { x: barTop.x + 10, y: barTop.y + 20 };
 
     demo.press(grab);
     demo.rotate("counter-clockwise");
@@ -151,8 +179,8 @@ describe("holding by the item's center", () => {
     const demo = demoWithShowreelLayout();
     demo.holdBy = "item center";
     const backpack = frameFor(demo.layout, "backpack");
-    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
-    const grab = { x: swordTop.x + 5, y: swordTop.y + 5 };
+    const barTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const grab = { x: barTop.x + 5, y: barTop.y + 5 };
 
     demo.press(grab);
 
@@ -168,21 +196,21 @@ describe("picking up by click", () => {
     demo.pickUpBy = "click";
     const stash = frameFor(demo.layout, "stash");
     const backpack = frameFor(demo.layout, "backpack");
-    const potion = cellOrigin(demo.layout, backpack, { x: 3, y: 0 });
-    const grab = { x: potion.x + 10, y: potion.y + 10 };
+    const dot = cellOrigin(demo.layout, backpack, { x: 3, y: 0 });
+    const grab = { x: dot.x + 10, y: dot.y + 10 };
     const free = cellOrigin(demo.layout, stash, { x: 2, y: 0 });
     const dropAt = { x: free.x + 10, y: free.y + 10 };
 
     demo.press(grab);
     demo.release(grab);
-    expect(demo.inventory.hand?.itemId).toBe("potion");
+    expect(demo.inventory.hand?.itemId).toBe("dot-1");
 
     demo.move(dropAt);
     demo.press(dropAt);
     demo.release(dropAt);
     expect(demo.inventory.hand).toBeNull();
     expect(demo.inventory.placements).toContainEqual({
-      itemId: "potion",
+      itemId: "dot-1",
       gridId: "stash",
       origin: { x: 2, y: 0 },
       rotation: 0,
@@ -192,13 +220,49 @@ describe("picking up by click", () => {
   test("press and drag stays the default, dropping on release", () => {
     const demo = demoWithShowreelLayout();
     const backpack = frameFor(demo.layout, "backpack");
-    const potion = cellOrigin(demo.layout, backpack, { x: 3, y: 0 });
-    const grab = { x: potion.x + 10, y: potion.y + 10 };
+    const dot = cellOrigin(demo.layout, backpack, { x: 3, y: 0 });
+    const grab = { x: dot.x + 10, y: dot.y + 10 };
 
     demo.press(grab);
     demo.release(grab);
 
     expect(demo.pickUpBy).toBe("press and drag");
     expect(demo.inventory.hand).toBeNull();
+  });
+});
+
+describe("nudge animation", () => {
+  function nudgedDrop(demo: Demo): void {
+    const stash = frameFor(demo.layout, "stash");
+    const tonic = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
+    const corner = cellOrigin(demo.layout, stash, { x: 3, y: 0 });
+    demo.press({ x: tonic.x + 10, y: tonic.y + 10 });
+    demo.release({ x: corner.x + 300, y: corner.y - 300 });
+  }
+
+  test("a nudged drop animates the item from where it was let go into its cell", () => {
+    const demo = demoWithShowreelLayout();
+    nudgedDrop(demo);
+
+    const [motion] = demo.motions;
+    expect(motion).toMatchObject({ itemId: "dot-3", animation: demo.nudgeAnimation, offset: { x: 290, y: -310 } });
+  });
+
+  test("a drop that lands where it was let go does not animate", () => {
+    const demo = demoWithShowreelLayout();
+    const backpack = frameFor(demo.layout, "backpack");
+    const dot = cellOrigin(demo.layout, backpack, { x: 3, y: 0 });
+
+    demo.press({ x: dot.x + 10, y: dot.y + 10 });
+    demo.release({ x: dot.x + 10, y: dot.y + 10 });
+
+    expect(demo.motions).toEqual([]);
+  });
+
+  test("choosing none turns the animation off", () => {
+    const demo = demoWithShowreelLayout();
+    demo.nudgeAnimation = "none";
+    nudgedDrop(demo);
+    expect(demo.motions).toEqual([]);
   });
 });

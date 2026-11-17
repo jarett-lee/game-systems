@@ -1,12 +1,12 @@
 import { expect, test } from "vitest";
-import { defaultSizes, showreelLayout } from "./catalog";
+import { defaultSizes } from "./catalog";
 import { Demo } from "./demo";
 import { cellCenter, frameFor } from "./layout";
-import { showreel } from "./showreel";
+import { prepareShowreel, showreel } from "./showreel";
 
 test("the Showreel shows a place, a push preview, a swap, and a move between grids", () => {
   const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
-  demo.reset(defaultSizes, showreelLayout);
+  prepareShowreel(demo);
   const shown: string[] = [];
 
   for (const step of showreel) {
@@ -36,7 +36,7 @@ test("the Showreel shows a place, a push preview, a swap, and a move between gri
     "over:placed",
     "Placed",
     "over:swapped",
-    "Swapped: the potion popped out",
+    "Swapped: the monomino popped out",
     "over:placed",
     "Placed",
     "over:placed",

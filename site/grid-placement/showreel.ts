@@ -81,8 +81,15 @@ function pointAt(demo: Demo, spot: Spot): Point {
   return cellCenter(demo.layout, frameFor(demo.layout, spot.grid), spot.cell);
 }
 
-export async function playShowreel(demo: Demo, onCaption: (text: string) => void): Promise<void> {
+export function prepareShowreel(demo: Demo): void {
   demo.reset(defaultSizes, showreelLayout);
+  demo.holdBy = "where grabbed";
+  demo.pickUpBy = "press and drag";
+}
+
+export async function playShowreel(demo: Demo, onCaption: (text: string) => void): Promise<void> {
+  const settings = { holdBy: demo.holdBy, pickUpBy: demo.pickUpBy };
+  prepareShowreel(demo);
   demo.move({ x: demo.layout.width / 2, y: demo.layout.height / 2 });
   for (const step of showreel) {
     switch (step.do) {
@@ -108,4 +115,5 @@ export async function playShowreel(demo: Demo, onCaption: (text: string) => void
     }
   }
   onCaption("");
+  Object.assign(demo, settings);
 }
