@@ -61,7 +61,7 @@ export class Demo {
   nudgeReach = Infinity;
   nudgeAnimation: NudgeAnimation = "spring";
   motions: Motion[] = [];
-  private previews = new Map<string, { key: string; motion: Motion }>();
+  private previews = new Map<string, { key: string; to: Point; motion: Motion }>();
   clock: () => number = () => performance.now();
   private pickedUpThisPress = false;
   message = "Drag an item. R or right-click rotates it, E rotates it back.";
@@ -263,14 +263,18 @@ export class Demo {
       seen.add(id);
       let entry = this.previews.get(id);
       if (!entry || entry.key !== key) {
-        entry = { key, motion: { itemId: id, offset: { x: from.x - to.x, y: from.y - to.y }, start: now, animation } };
+        const shown = entry && motionAt(entry.motion, now);
+        const start = entry
+          ? { x: entry.to.x + (shown?.offset.x ?? 0), y: entry.to.y + (shown?.offset.y ?? 0) }
+          : from;
+        entry = { key, to, motion: { itemId: id, offset: { x: start.x - to.x, y: start.y - to.y }, start: now, animation } };
         this.previews.set(id, entry);
       }
       const frame = motionAt(entry.motion, now);
       if (frame) frames.set(id, frame);
     };
     if (target && hand && target.nudged) {
-      const key = [target.frame.grid.id, hand.rotation, target.aimed.x, target.aimed.y, target.origin.x, target.origin.y].join();
+      const key = [target.frame.grid.id, hand.rotation, target.origin.x, target.origin.y].join();
       track(
         hand.itemId,
         key,

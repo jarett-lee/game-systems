@@ -344,6 +344,29 @@ describe("preview animation", () => {
     expect(demo.previewMotions(target, 5002).get("dot-3")).toMatchObject({ offset: { x: -demo.layout.pitch, y: 0 } });
   });
 
+  test("aiming at another cell with the same destination doesn't restart the slide", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDotOverL(demo);
+    if (!target) throw new Error("no target");
+    demo.previewMotions(target, 1000);
+
+    const later = demo.previewMotions({ ...target, aimed: { x: 0, y: 1 } }, 1100).get("dot-3");
+
+    expect(Math.abs(later?.offset.x ?? 0)).toBeLessThan(demo.layout.pitch);
+    expect(later?.offset.y).toBe(0);
+  });
+
+  test("a new destination slides on from where the preview is shown", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDotOverL(demo);
+    if (!target) throw new Error("no target");
+    demo.previewMotions(target, 1000);
+
+    const moved = demo.previewMotions({ ...target, origin: { x: 2, y: 0 } }, 1000).get("dot-3");
+
+    expect(moved).toMatchObject({ offset: { x: -2 * demo.layout.pitch, y: 0 } });
+  });
+
   test("pieces that would be pushed slide from their spot to where they'd go", () => {
     const demo = demoWithShowreelLayout();
     const target = hoverDominoOverDots(demo);
