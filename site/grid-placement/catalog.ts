@@ -81,7 +81,7 @@ export const showreelLayout: readonly Placement[] = [
   { itemId: "I3", gridId: "backpack", origin: { x: 2, y: 0 }, rotation: 0 },
   { itemId: "dot-1", gridId: "backpack", origin: { x: 3, y: 0 }, rotation: 0 },
   { itemId: "dot-2", gridId: "backpack", origin: { x: 3, y: 1 }, rotation: 0 },
-  { itemId: "T", gridId: "backpack", origin: { x: 3, y: 2 }, rotation: 0 },
+  { itemId: "T", gridId: "backpack", origin: { x: 3, y: 2 }, rotation: 2 },
   { itemId: "domino", gridId: "backpack", origin: { x: 0, y: 3 }, rotation: 0 },
   { itemId: "L3", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
   { itemId: "dot-3", gridId: "stash", origin: { x: 3, y: 3 }, rotation: 0 },
