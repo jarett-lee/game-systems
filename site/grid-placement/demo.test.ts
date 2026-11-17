@@ -10,6 +10,10 @@ function demoWithShowreelLayout(): Demo {
   return demo;
 }
 
+test("nudges slide by default", () => {
+  expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).nudgeAnimation).toBe("slide");
+});
+
 test("items are held by their center unless set otherwise", () => {
   expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).holdBy).toBe("item center");
 });
@@ -326,6 +330,33 @@ describe("preview animation", () => {
       const to = cellOrigin(demo.layout, stash, destination.origin);
       expect(motions.get(destination.itemId)).toMatchObject({ offset: { x: from.x - to.x, y: from.y - to.y } });
     }
+  });
+
+  test("pieces that would have been pushed slide back when the preview ends", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDominoOverDots(demo);
+    if (target?.outcome.kind !== "pushed") throw new Error("expected a push");
+    demo.previewMotions(target, 1000);
+    demo.previewMotions(target, 5000);
+
+    demo.previewMotions(null, 5000);
+
+    const stash = frameFor(demo.layout, "stash");
+    for (const destination of target.outcome.pushed) {
+      const was = demo.inventory.placements.find((placement) => placement.itemId === destination.itemId);
+      if (!was) throw new Error("missing placement");
+      const from = cellOrigin(demo.layout, stash, destination.origin);
+      const home = cellOrigin(demo.layout, stash, was.origin);
+      expect(demo.motionFor(destination.itemId, 5000)).toMatchObject({ offset: { x: from.x - home.x, y: from.y - home.y } });
+    }
+    for (const destination of target.outcome.pushed) expect(demo.motionFor(destination.itemId, 9000)).toBeNull();
+  });
+
+  test("the piece being held doesn't slide anywhere when its preview ends", () => {
+    const demo = demoWithShowreelLayout();
+    demo.previewMotions(hoverBarOffTheTop(demo), 1000);
+    demo.previewMotions(null, 1100);
+    expect(demo.motions).toEqual([]);
   });
 
   test("pushed pieces don't slide a second time when the drop lands after the preview finished", () => {

@@ -56,7 +56,7 @@ export class Demo {
   grabOffset: Point = { x: 0, y: 0 };
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
-  nudgeAnimation: NudgeAnimation = "spring";
+  nudgeAnimation: NudgeAnimation = "slide";
   motions: Motion[] = [];
   private previews = new Map<string, { key: string; to: Point; motion: Motion }>();
   clock: () => number = () => performance.now();
@@ -277,8 +277,26 @@ export class Demo {
         );
       }
     }
-    for (const id of this.previews.keys()) if (!seen.has(id)) this.previews.delete(id);
+    for (const [id, entry] of this.previews) {
+      if (seen.has(id)) continue;
+      this.previews.delete(id);
+      this.slideBack(id, entry, now);
+    }
     return frames;
+  }
+
+  private slideBack(id: string, entry: { to: Point; motion: Motion }, now: number): void {
+    const placement = this.inventory.placements.find((candidate) => candidate.itemId === id);
+    const frame = placement && this.layout.frames.find((candidate) => candidate.grid.id === placement.gridId);
+    if (!placement || !frame || this.nudgeAnimation === "none") return;
+    const shown = motionAt(entry.motion, now);
+    const home = cellOrigin(this.layout, frame, placement.origin);
+    const offset = {
+      x: entry.to.x + (shown?.offset.x ?? 0) - home.x,
+      y: entry.to.y + (shown?.offset.y ?? 0) - home.y,
+    };
+    this.motions = this.motions.filter((motion) => motion.itemId !== id);
+    this.motions.push({ itemId: id, offset, start: now, animation: this.nudgeAnimation });
   }
 
   motionFor(itemId: string, now: number): MotionFrame | null {
