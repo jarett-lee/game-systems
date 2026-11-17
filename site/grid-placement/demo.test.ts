@@ -60,3 +60,73 @@ describe("grabbing an item", () => {
     expect(demo.target()?.origin).toEqual({ x: 3, y: 0 });
   });
 });
+
+describe("letting go where it can't land", () => {
+  test("outside the grids sends the item back to its original spot", () => {
+    const demo = demoWithShowreelLayout();
+    const backpack = frameFor(demo.layout, "backpack");
+    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+
+    demo.press({ x: swordTop.x + 10, y: swordTop.y + 10 });
+    demo.rotate();
+    demo.release({ x: demo.layout.width + 400, y: demo.layout.height + 400 });
+
+    expect(demo.inventory.hand).toBeNull();
+    expect(demo.inventory.placements).toContainEqual({
+      itemId: "sword",
+      gridId: "backpack",
+      origin: { x: 2, y: 0 },
+      rotation: 0,
+    });
+  });
+
+  test("onto two items also sends it back", () => {
+    const demo = demoWithShowreelLayout();
+    const backpack = frameFor(demo.layout, "backpack");
+    const shield = cellOrigin(demo.layout, backpack, { x: 1, y: 1 });
+    const grab = { x: shield.x + 10, y: shield.y + 10 };
+
+    demo.press(grab);
+    demo.release({ x: grab.x + 2 * demo.layout.pitch, y: grab.y });
+
+    expect(demo.inventory.hand).toBeNull();
+    expect(demo.inventory.placements).toContainEqual({
+      itemId: "shield",
+      gridId: "backpack",
+      origin: { x: 0, y: 0 },
+      rotation: 0,
+    });
+  });
+});
+
+describe("rotating while holding", () => {
+  test("E turns the other way, and the grab point stays under the pointer", () => {
+    const demo = demoWithShowreelLayout();
+    const backpack = frameFor(demo.layout, "backpack");
+    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const grab = { x: swordTop.x + 10, y: swordTop.y + 20 };
+
+    demo.press(grab);
+    demo.rotate("counter-clockwise");
+
+    expect(demo.inventory.hand?.rotation).toBe(3);
+    const corner = demo.heldCorner();
+    expect(corner && { x: grab.x - corner.x, y: grab.y - corner.y }).toEqual({ x: 20, y: demo.layout.cellSize - 10 });
+  });
+});
+
+describe("holding by the item's center", () => {
+  test("the item's center jumps to the pointer", () => {
+    const demo = demoWithShowreelLayout();
+    demo.holdBy = "item center";
+    const backpack = frameFor(demo.layout, "backpack");
+    const swordTop = cellOrigin(demo.layout, backpack, { x: 2, y: 0 });
+    const grab = { x: swordTop.x + 5, y: swordTop.y + 5 };
+
+    demo.press(grab);
+
+    const corner = demo.heldCorner();
+    const { pitch, gap, cellSize } = demo.layout;
+    expect(corner && { x: corner.x + cellSize / 2, y: corner.y + (3 * pitch - gap) / 2 }).toEqual(grab);
+  });
+});

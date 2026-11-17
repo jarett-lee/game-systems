@@ -104,7 +104,8 @@ canvas.addEventListener("contextmenu", (event) => {
 
 window.addEventListener("keydown", (event) => {
   if (playing) return;
-  if (event.key === "r" || event.key === "R") demo.rotate();
+  if (event.key === "r" || event.key === "R") demo.rotate("clockwise");
+  if (event.key === "e" || event.key === "E") demo.rotate("counter-clockwise");
   if (event.key === "Escape") demo.stowHeld();
 });
 
@@ -138,7 +139,12 @@ grids.addBinding(settings, "backpackHeight", { label: "backpack h", min: 2, max:
 grids.addBinding(settings, "stashWidth", { label: "stash w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);
 grids.addBinding(settings, "stashHeight", { label: "stash h", min: 2, max: 8, step: 1 }).on("change", resetFromSettings);
 pane.addBinding(settings, "cellSize", { label: "cell size", min: 28, max: 96, step: 2 }).on("change", relayout);
-pane.addButton({ title: "Rotate held (R)" }).on("click", () => demo.rotate());
+pane.addBinding(demo, "holdBy", {
+  label: "hold item by",
+  options: { "where grabbed": "where grabbed", "item center": "item center" },
+});
+pane.addButton({ title: "Rotate held (R)" }).on("click", () => demo.rotate("clockwise"));
+pane.addButton({ title: "Rotate held back (E)" }).on("click", () => demo.rotate("counter-clockwise"));
 pane.addButton({ title: "Stow held (Esc)" }).on("click", () => demo.stowHeld());
 pane.addButton({ title: "Reset items" }).on("click", resetFromSettings);
 pane.addButton({ title: "Play Showreel" }).on("click", () => void runShowreel());

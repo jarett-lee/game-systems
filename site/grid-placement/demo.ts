@@ -1,9 +1,11 @@
 import {
   createInventory,
   drop,
+  footprintBounds,
   itemAt,
   popOut,
   previewDrop,
+  returnHeld,
   rotateFootprint,
   rotateHand,
   stow,
@@ -12,6 +14,7 @@ import {
   type Footprint,
   type Inventory,
   type Placement,
+  type RotationDirection,
 } from "../../systems/grid-placement/src";
 import { catalog, catalogItem, type GridSizes } from "./catalog";
 import {
@@ -27,22 +30,13 @@ import {
 
 export type Target = { readonly frame: GridFrame; readonly origin: Cell; readonly outcome: DropOutcome };
 
+export type HoldBy = "where grabbed" | "item center";
+
 function gridsFor(sizes: GridSizes) {
   return [
     { id: "backpack", width: sizes.backpackWidth, height: sizes.backpackHeight },
     { id: "stash", width: sizes.stashWidth, height: sizes.stashHeight },
   ];
-}
-
-function centerIndex(footprint: Footprint): number {
-  const cx = footprint.reduce((sum, cell) => sum + cell.x, 0) / footprint.length;
-  const cy = footprint.reduce((sum, cell) => sum + cell.y, 0) / footprint.length;
-  let best = 0;
-  footprint.forEach((cell, index) => {
-    const bestCell = footprint[best] ?? cell;
-    if (Math.hypot(cell.x - cx, cell.y - cy) < Math.hypot(bestCell.x - cx, bestCell.y - cy)) best = index;
-  });
-  return best;
 }
 
 export class Demo {
@@ -51,7 +45,8 @@ export class Demo {
   pointer: Point | null = null;
   grabIndex = 0;
   grabOffset: Point = { x: 0, y: 0 };
-  message = "Drag an item. R or right-click rotates it.";
+  holdBy: HoldBy = "where grabbed";
+  message = "Drag an item. R or right-click rotates it, E rotates it back.";
 
   constructor(
     private sizes: GridSizes,
@@ -83,7 +78,7 @@ export class Demo {
 
   private stowEverything(): void {
     for (const item of catalog) {
-      this.inventory = stow({ ...this.inventory, hand: { itemId: item.id, rotation: 0 } }).inventory;
+      this.inventory = stow({ ...this.inventory, hand: { itemId: item.id, rotation: 0, from: null } }).inventory;
     }
     this.inventory = { ...this.inventory, hand: null };
   }
@@ -99,10 +94,16 @@ export class Demo {
     return { x: this.pointer.x - this.grabOffset.x, y: this.pointer.y - this.grabOffset.y };
   }
 
-  private centerGrab(): void {
+  private holdByCenter(): void {
     const footprint = this.heldFootprint();
-    this.grabIndex = footprint ? centerIndex(footprint) : 0;
-    this.grabOffset = { x: this.layout.cellSize / 2, y: this.layout.cellSize / 2 };
+    const grabbed = footprint?.[this.grabIndex];
+    if (!footprint || !grabbed) return;
+    const { width, height } = footprintBounds(footprint);
+    const { pitch, gap } = this.layout;
+    this.grabOffset = {
+      x: (width * pitch - gap) / 2 - grabbed.x * pitch,
+      y: (height * pitch - gap) / 2 - grabbed.y * pitch,
+    };
   }
 
   target(): Target | null {
@@ -138,6 +139,7 @@ export class Demo {
     const corner = cellOrigin(this.layout, frame, cell);
     this.grabOffset = { x: point.x - corner.x, y: point.y - corner.y };
     this.inventory = result.inventory;
+    if (this.holdBy === "item center") this.holdByCenter();
     this.message = `Picked up the ${itemId}`;
   }
 
@@ -149,21 +151,41 @@ export class Demo {
     this.pointer = point;
     if (!this.inventory.hand) return;
     const target = this.target();
-    if (!target) {
-      this.message = "Hold it over a grid to drop it. Esc stows it.";
+    if (!target || target.outcome.kind === "rejected") {
+      this.sendBack(target ? describeDrop(target.outcome) : "Dropped outside the grids");
       return;
     }
     const result = drop(this.inventory, target.frame.grid.id, target.origin);
     this.inventory = result.inventory;
     this.message = describeDrop(result.outcome);
-    if (result.outcome.kind === "swapped") this.centerGrab();
+    if (result.outcome.kind === "swapped") {
+      this.grabIndex = 0;
+      this.holdByCenter();
+    }
   }
 
-  rotate(): void {
+  private sendBack(reason: string): void {
+    const returned = returnHeld(this.inventory);
+    if (returned.outcome.kind === "returned") {
+      this.inventory = returned.inventory;
+      this.message = `${reason}, so it went back to its spot`;
+      return;
+    }
+    const stowed = stow(this.inventory);
+    this.inventory = stowed.inventory;
+    this.message =
+      stowed.outcome.kind === "placed"
+        ? `${reason}. Its old spot is taken, so it was stowed`
+        : `${reason}. There's nowhere to put it, so you're still holding it`;
+  }
+
+  rotate(direction: RotationDirection = "clockwise"): void {
     if (!this.inventory.hand) return;
-    this.inventory = rotateHand(this.inventory);
-    this.grabOffset = { x: this.layout.cellSize - this.grabOffset.y, y: this.grabOffset.x };
-    this.message = "Rotated";
+    this.inventory = rotateHand(this.inventory, direction);
+    const { x, y } = this.grabOffset;
+    const size = this.layout.cellSize;
+    this.grabOffset = direction === "clockwise" ? { x: size - y, y: x } : { x: y, y: size - x };
+    this.message = direction === "clockwise" ? "Rotated clockwise" : "Rotated counter-clockwise";
   }
 
   stowHeld(): void {

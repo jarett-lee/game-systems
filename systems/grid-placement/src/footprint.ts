@@ -29,3 +29,7 @@ export function rotateFootprint(footprint: Footprint, rotation: Rotation): Footp
 export function nextRotation(rotation: Rotation): Rotation {
   return ((rotation + 1) % 4) as Rotation;
 }
+
+export function previousRotation(rotation: Rotation): Rotation {
+  return ((rotation + 3) % 4) as Rotation;
+}

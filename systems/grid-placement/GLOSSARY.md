@@ -40,6 +40,10 @@ _Avoid_: Remove, eject, take
 Dropping the Item in Hand where its Footprint covers exactly one other Item: the dropped Item is placed and the covered Item pops out into the Hand. A drop that would cover two or more Items is rejected.
 _Avoid_: Replace, exchange, bump
 
+**Return**:
+Putting the Item in Hand back at the Placement it was popped out from, with its old Rotation. Only possible while that spot is still free.
+_Avoid_: Undo, cancel, snap back
+
 **Stow**:
 Putting the Item in Hand into the first free spot that fits, turning it if needed, without swapping anything out.
 _Avoid_: Auto-place, auto-sort, quick-add

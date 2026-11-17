@@ -1,4 +1,12 @@
-import { footprintBounds, nextRotation, rotateFootprint, type Cell, type Footprint, type Rotation } from "./footprint";
+import {
+  footprintBounds,
+  nextRotation,
+  previousRotation,
+  rotateFootprint,
+  type Cell,
+  type Footprint,
+  type Rotation,
+} from "./footprint";
 
 export type GridSpec = { readonly id: string; readonly width: number; readonly height: number };
 
@@ -11,7 +19,9 @@ export type Placement = {
   readonly rotation: Rotation;
 };
 
-export type Held = { readonly itemId: string; readonly rotation: Rotation };
+export type Held = { readonly itemId: string; readonly rotation: Rotation; readonly from: Placement | null };
+
+export type RotationDirection = "clockwise" | "counter-clockwise";
 
 export type Inventory = {
   readonly grids: readonly GridSpec[];
@@ -28,6 +38,10 @@ export type DropOutcome =
 export type PopOutcome = { readonly kind: "popped" } | { readonly kind: "refused"; readonly reason: "hand-full" | "not-placed" };
 
 export type StowOutcome = { readonly kind: "placed" } | { readonly kind: "rejected"; readonly reason: "empty-hand" | "no-space" };
+
+export type ReturnOutcome =
+  | { readonly kind: "returned" }
+  | { readonly kind: "rejected"; readonly reason: "empty-hand" | "no-origin" | "spot-taken" };
 
 export type Result<Outcome> = { readonly inventory: Inventory; readonly outcome: Outcome };
 
@@ -94,7 +108,7 @@ export function previewDrop(inventory: Inventory, gridId: string, origin: Cell):
 }
 
 function heldFrom(placement: Placement): Held {
-  return { itemId: placement.itemId, rotation: placement.rotation };
+  return { itemId: placement.itemId, rotation: placement.rotation, from: placement };
 }
 
 export function drop(inventory: Inventory, gridId: string, origin: Cell): Result<DropOutcome> {
@@ -130,10 +144,24 @@ export function popOut(inventory: Inventory, itemId: string): Result<PopOutcome>
   };
 }
 
-export function rotateHand(inventory: Inventory): Inventory {
+export function rotateHand(inventory: Inventory, direction: RotationDirection = "clockwise"): Inventory {
   const { hand } = inventory;
   if (!hand) return inventory;
-  return { ...inventory, hand: { ...hand, rotation: nextRotation(hand.rotation) } };
+  const rotation = direction === "clockwise" ? nextRotation(hand.rotation) : previousRotation(hand.rotation);
+  return { ...inventory, hand: { ...hand, rotation } };
+}
+
+export function returnHeld(inventory: Inventory): Result<ReturnOutcome> {
+  const { hand } = inventory;
+  if (!hand) return { inventory, outcome: { kind: "rejected", reason: "empty-hand" } };
+  const { from } = hand;
+  if (!from) return { inventory, outcome: { kind: "rejected", reason: "no-origin" } };
+
+  const turnedBack = { ...inventory, hand: { ...hand, rotation: from.rotation } };
+  if (previewDrop(turnedBack, from.gridId, from.origin).kind !== "placed") {
+    return { inventory, outcome: { kind: "rejected", reason: "spot-taken" } };
+  }
+  return { inventory: drop(turnedBack, from.gridId, from.origin).inventory, outcome: { kind: "returned" } };
 }
 
 function rotationsFrom(start: Rotation): Rotation[] {

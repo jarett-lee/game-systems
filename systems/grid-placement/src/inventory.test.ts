@@ -5,6 +5,7 @@ import {
   itemAt,
   popOut,
   previewDrop,
+  returnHeld,
   rotateHand,
   stow,
   type Inventory,
@@ -29,7 +30,7 @@ function emptyInventory(): Inventory {
 }
 
 function holding(inventory: Inventory, itemId: string): Inventory {
-  return { ...inventory, hand: { itemId, rotation: 0 } };
+  return { ...inventory, hand: { itemId, rotation: 0, from: null } };
 }
 
 function placedAt(inventory: Inventory, itemId: string, gridId: string, x: number, y: number): Inventory {
@@ -90,7 +91,7 @@ describe("swapping", () => {
     const result = drop(holding(inventory, "sword"), "backpack", { x: 0, y: 0 });
 
     expect(result.outcome).toEqual({ kind: "swapped", poppedItemId: "potion" });
-    expect(result.inventory.hand).toEqual({ itemId: "potion", rotation: 0 });
+    expect(result.inventory.hand).toMatchObject({ itemId: "potion", rotation: 0 });
     expect(itemAt(result.inventory, "backpack", { x: 0, y: 1 })).toBe("sword");
   });
 
@@ -100,7 +101,7 @@ describe("swapping", () => {
 
     const result = drop(holding(inventory, "potion"), "backpack", { x: 1, y: 0 });
 
-    expect(result.inventory.hand).toEqual({ itemId: "sword", rotation: 1 });
+    expect(result.inventory.hand).toMatchObject({ itemId: "sword", rotation: 1 });
   });
 });
 
@@ -111,7 +112,7 @@ describe("popping out", () => {
     const result = popOut(inventory, "sword");
 
     expect(result.outcome).toEqual({ kind: "popped" });
-    expect(result.inventory.hand).toEqual({ itemId: "sword", rotation: 0 });
+    expect(result.inventory.hand).toMatchObject({ itemId: "sword", rotation: 0 });
     expect(itemAt(result.inventory, "backpack", { x: 2, y: 1 })).toBeNull();
   });
 
@@ -147,7 +148,7 @@ describe("previewDrop", () => {
     const inventory = holding(placedAt(emptyInventory(), "potion", "backpack", 0, 1), "sword");
 
     expect(previewDrop(inventory, "backpack", { x: 0, y: 0 })).toEqual({ kind: "swapped", poppedItemId: "potion" });
-    expect(inventory.hand).toEqual({ itemId: "sword", rotation: 0 });
+    expect(inventory.hand).toMatchObject({ itemId: "sword", rotation: 0 });
   });
 });
 
@@ -178,5 +179,58 @@ describe("stow", () => {
 
     expect(result.outcome).toEqual({ kind: "rejected", reason: "no-space" });
     expect(result.inventory).toBe(start);
+  });
+});
+
+describe("rotating the Hand", () => {
+  test("turns clockwise by default", () => {
+    expect(rotateHand(holding(emptyInventory(), "sword")).hand?.rotation).toBe(1);
+  });
+
+  test("turns counter-clockwise when asked", () => {
+    expect(rotateHand(holding(emptyInventory(), "sword"), "counter-clockwise").hand?.rotation).toBe(3);
+  });
+
+  test("one turn each way cancels out", () => {
+    const start = holding(emptyInventory(), "sword");
+    expect(rotateHand(rotateHand(start, "clockwise"), "counter-clockwise").hand?.rotation).toBe(0);
+  });
+});
+
+describe("returning the held Item", () => {
+  test("puts it back at the Placement it was popped out from, with its old rotation", () => {
+    const rotatedSword = rotateHand(holding(emptyInventory(), "sword"));
+    const placed = drop(rotatedSword, "backpack", { x: 1, y: 0 }).inventory;
+    const turnedAgain = rotateHand(rotateHand(popOut(placed, "sword").inventory));
+
+    const result = returnHeld(turnedAgain);
+
+    expect(result.outcome).toEqual({ kind: "returned" });
+    expect(result.inventory.hand).toBeNull();
+    expect(result.inventory.placements).toContainEqual({
+      itemId: "sword",
+      gridId: "backpack",
+      origin: { x: 1, y: 0 },
+      rotation: 1,
+    });
+  });
+
+  test("is refused when the old spot has been taken", () => {
+    const inventory = placedAt(emptyInventory(), "potion", "backpack", 0, 1);
+    const swapped = drop(holding(inventory, "sword"), "backpack", { x: 0, y: 0 }).inventory;
+
+    const result = returnHeld(swapped);
+
+    expect(result.outcome).toEqual({ kind: "rejected", reason: "spot-taken" });
+    expect(result.inventory).toBe(swapped);
+  });
+
+  test("is refused when the Item never had a Placement", () => {
+    const start = holding(emptyInventory(), "gem");
+    expect(returnHeld(start).outcome).toEqual({ kind: "rejected", reason: "no-origin" });
+  });
+
+  test("is refused with nothing in the Hand", () => {
+    expect(returnHeld(emptyInventory()).outcome).toEqual({ kind: "rejected", reason: "empty-hand" });
   });
 });
