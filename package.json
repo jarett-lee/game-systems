@@ -3,12 +3,22 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc",
     "lint": "eslint .",
-    "test:lint-rules": "node --test tools/eslint/"
+    "test:lint-rules": "node --test tools/eslint/",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run test:lint-rules && npm run build"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
     "eslint": "^10.15.0",
+    "tweakpane": "^4.0.5",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.73.0"
+    "typescript-eslint": "^8.73.0",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   }
 }

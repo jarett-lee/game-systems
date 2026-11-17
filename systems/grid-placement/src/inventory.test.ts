@@ -1,0 +1,182 @@
+import { describe, expect, test } from "vitest";
+import {
+  createInventory,
+  drop,
+  itemAt,
+  popOut,
+  previewDrop,
+  rotateHand,
+  stow,
+  type Inventory,
+} from "./inventory";
+
+const backpack = { id: "backpack", width: 4, height: 3 };
+const stash = { id: "stash", width: 3, height: 3 };
+
+const potion = { id: "potion", footprint: [{ x: 0, y: 0 }] };
+const sword = {
+  id: "sword",
+  footprint: [
+    { x: 0, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: 2 },
+  ],
+};
+const gem = { id: "gem", footprint: [{ x: 0, y: 0 }] };
+
+function emptyInventory(): Inventory {
+  return createInventory([backpack, stash], [potion, sword, gem]);
+}
+
+function holding(inventory: Inventory, itemId: string): Inventory {
+  return { ...inventory, hand: { itemId, rotation: 0 } };
+}
+
+function placedAt(inventory: Inventory, itemId: string, gridId: string, x: number, y: number): Inventory {
+  const result = drop(holding(inventory, itemId), gridId, { x, y });
+  expect(result.outcome.kind).toBe("placed");
+  return result.inventory;
+}
+
+describe("dropping onto free cells", () => {
+  test("places the Item and empties the Hand", () => {
+    const { inventory, outcome } = drop(holding(emptyInventory(), "sword"), "backpack", { x: 1, y: 0 });
+
+    expect(outcome).toEqual({ kind: "placed" });
+    expect(inventory.hand).toBeNull();
+    expect(itemAt(inventory, "backpack", { x: 1, y: 2 })).toBe("sword");
+    expect(itemAt(inventory, "backpack", { x: 2, y: 0 })).toBeNull();
+  });
+
+  test("uses the Hand's rotation", () => {
+    const rotated = rotateHand(holding(emptyInventory(), "sword"));
+    const { inventory } = drop(rotated, "backpack", { x: 0, y: 0 });
+
+    expect(itemAt(inventory, "backpack", { x: 2, y: 0 })).toBe("sword");
+    expect(itemAt(inventory, "backpack", { x: 0, y: 1 })).toBeNull();
+  });
+});
+
+describe("rejected drops", () => {
+  test("off the edge of the Grid", () => {
+    const start = holding(emptyInventory(), "sword");
+    const { inventory, outcome } = drop(start, "backpack", { x: 0, y: 1 });
+
+    expect(outcome).toEqual({ kind: "rejected", reason: "out-of-bounds" });
+    expect(inventory).toBe(start);
+  });
+
+  test("covering two or more Items", () => {
+    let inventory = placedAt(emptyInventory(), "potion", "backpack", 0, 0);
+    inventory = placedAt(inventory, "gem", "backpack", 0, 2);
+    const start = holding(inventory, "sword");
+
+    const result = drop(start, "backpack", { x: 0, y: 0 });
+
+    expect(result.outcome).toEqual({ kind: "rejected", reason: "covers-several" });
+    expect(result.inventory).toBe(start);
+  });
+
+  test("with nothing in the Hand", () => {
+    const start = emptyInventory();
+    expect(drop(start, "backpack", { x: 0, y: 0 }).outcome).toEqual({ kind: "rejected", reason: "empty-hand" });
+  });
+});
+
+describe("swapping", () => {
+  test("covering exactly one Item places the held Item and pops the covered one into the Hand", () => {
+    const inventory = placedAt(emptyInventory(), "potion", "backpack", 0, 1);
+
+    const result = drop(holding(inventory, "sword"), "backpack", { x: 0, y: 0 });
+
+    expect(result.outcome).toEqual({ kind: "swapped", poppedItemId: "potion" });
+    expect(result.inventory.hand).toEqual({ itemId: "potion", rotation: 0 });
+    expect(itemAt(result.inventory, "backpack", { x: 0, y: 1 })).toBe("sword");
+  });
+
+  test("the popped Item keeps its rotation", () => {
+    const rotatedSword = rotateHand(holding(emptyInventory(), "sword"));
+    const inventory = drop(rotatedSword, "backpack", { x: 0, y: 0 }).inventory;
+
+    const result = drop(holding(inventory, "potion"), "backpack", { x: 1, y: 0 });
+
+    expect(result.inventory.hand).toEqual({ itemId: "sword", rotation: 1 });
+  });
+});
+
+describe("popping out", () => {
+  test("moves a placed Item into the empty Hand and frees its Cells", () => {
+    const inventory = placedAt(emptyInventory(), "sword", "backpack", 2, 0);
+
+    const result = popOut(inventory, "sword");
+
+    expect(result.outcome).toEqual({ kind: "popped" });
+    expect(result.inventory.hand).toEqual({ itemId: "sword", rotation: 0 });
+    expect(itemAt(result.inventory, "backpack", { x: 2, y: 1 })).toBeNull();
+  });
+
+  test("is refused while the Hand already holds something", () => {
+    const inventory = holding(placedAt(emptyInventory(), "sword", "backpack", 2, 0), "potion");
+
+    const result = popOut(inventory, "sword");
+
+    expect(result.outcome).toEqual({ kind: "refused", reason: "hand-full" });
+    expect(result.inventory).toBe(inventory);
+  });
+});
+
+describe("several Grids", () => {
+  test("an Item moves from one Grid to another", () => {
+    const inventory = placedAt(emptyInventory(), "sword", "backpack", 0, 0);
+
+    const moved = drop(popOut(inventory, "sword").inventory, "stash", { x: 2, y: 0 }).inventory;
+
+    expect(itemAt(moved, "backpack", { x: 0, y: 0 })).toBeNull();
+    expect(itemAt(moved, "stash", { x: 2, y: 2 })).toBe("sword");
+  });
+
+  test("an Item in one Grid never blocks the same Cells in another", () => {
+    const inventory = placedAt(emptyInventory(), "potion", "backpack", 0, 0);
+
+    expect(previewDrop(holding(inventory, "gem"), "stash", { x: 0, y: 0 })).toEqual({ kind: "placed" });
+  });
+});
+
+describe("previewDrop", () => {
+  test("reports the outcome without changing anything", () => {
+    const inventory = holding(placedAt(emptyInventory(), "potion", "backpack", 0, 1), "sword");
+
+    expect(previewDrop(inventory, "backpack", { x: 0, y: 0 })).toEqual({ kind: "swapped", poppedItemId: "potion" });
+    expect(inventory.hand).toEqual({ itemId: "sword", rotation: 0 });
+  });
+});
+
+describe("stow", () => {
+  test("puts the held Item in the first free spot, trying Grids in order", () => {
+    const inventory = placedAt(emptyInventory(), "potion", "backpack", 0, 0);
+
+    const result = stow(holding(inventory, "sword"));
+
+    expect(result.outcome).toEqual({ kind: "placed" });
+    expect(itemAt(result.inventory, "backpack", { x: 1, y: 0 })).toBe("sword");
+  });
+
+  test("turns the Item when that is the only way it fits", () => {
+    const tiny = createInventory([{ id: "tray", width: 3, height: 1 }], [sword]);
+
+    const result = stow(holding(tiny, "sword"));
+
+    expect(result.outcome).toEqual({ kind: "placed" });
+    expect(itemAt(result.inventory, "tray", { x: 2, y: 0 })).toBe("sword");
+  });
+
+  test("leaves the Item in the Hand when nothing fits", () => {
+    const tiny = createInventory([{ id: "tray", width: 2, height: 1 }], [sword]);
+    const start = holding(tiny, "sword");
+
+    const result = stow(start);
+
+    expect(result.outcome).toEqual({ kind: "rejected", reason: "no-space" });
+    expect(result.inventory).toBe(start);
+  });
+});

@@ -24,6 +24,10 @@ _Avoid_: Shape, size, bounds
 Turning an Item's Footprint in 90° steps. Items are never mirrored.
 _Avoid_: Flip, orientation (when meaning the act)
 
+**Placement**:
+Where an Item sits: which Grid, the Cell its Footprint starts from, and its Rotation.
+_Avoid_: Position, slot, location
+
 **Hand**:
 Where an Item is while it's being dragged and isn't on any Grid.
 _Avoid_: Cursor, held slot, drag buffer
@@ -35,3 +39,7 @@ _Avoid_: Remove, eject, take
 **Swap**:
 Dropping the Item in Hand where its Footprint covers exactly one other Item: the dropped Item is placed and the covered Item pops out into the Hand. A drop that would cover two or more Items is rejected.
 _Avoid_: Replace, exchange, bump
+
+**Stow**:
+Putting the Item in Hand into the first free spot that fits, turning it if needed, without swapping anything out.
+_Avoid_: Auto-place, auto-sort, quick-add
