@@ -31,4 +31,4 @@ Two Grids side by side, with Tweakpane controls. The Showreel drags, rotates, sw
 
 ## Status
 
-Code, tests, Demo, and Showreel are done on the `grid-placement` branch. It's **built** once that branch is merged to `main`.
+**Built.** Code, tests, Demo, and Showreel are merged to `main`. Its Posts haven't been made yet.

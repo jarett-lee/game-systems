@@ -68,7 +68,7 @@ Publishing is a Claude Code skill that runs small, rerunnable scripts in `publis
 
 ## Status
 
-Planning. No systems are built yet. The first one is in [systems/grid-placement](systems/grid-placement/README.md).
+One system is built: [Grid Placement](systems/grid-placement/README.md). The publishing system that makes its Posts is next.
 
 ## License
 
