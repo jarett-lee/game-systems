@@ -42,16 +42,20 @@ body.playing canvas {
 }
 
 .caption {
-  position: absolute;
-  left: 16px;
-  bottom: 48px;
-  margin: 0;
+  display: inline-block;
+  margin: 12px 0 0;
+  min-height: calc(1.2em + 16px);
+  line-height: 1.2;
   padding: 8px 14px;
   background: var(--coral);
   color: var(--navy);
   font-size: clamp(1rem, 2.6vw, 1.5rem);
   font-weight: 600;
   pointer-events: none;
+}
+
+.caption[hidden] {
+  display: none;
 }
 
 .controls {
@@ -151,13 +155,18 @@ body.recording .stage {
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 24px;
 }
 
 body.recording .caption {
-  left: 50%;
-  bottom: 6%;
-  transform: translateX(-50%);
+  margin: 0;
   white-space: nowrap;
+}
+
+body.recording .caption[hidden] {
+  display: inline-block;
+  visibility: hidden;
 }

@@ -29,9 +29,17 @@ document.body.classList.toggle("recording", recording);
 const settings: GridSizes & { cellSize: number } = { ...defaultSizes, cellSize: 64 };
 const palette = readPalette();
 
+function captionRoom(): number {
+  const wasHidden = caption.hidden;
+  caption.hidden = false;
+  const room = caption.getBoundingClientRect().height + 24;
+  caption.hidden = wasHidden;
+  return room;
+}
+
 function available() {
   const box = stage.getBoundingClientRect();
-  return { width: box.width, height: recording ? box.height : Math.max(320, window.innerHeight - box.top - 96) };
+  return { width: box.width, height: recording ? box.height - captionRoom() : Math.max(320, window.innerHeight - box.top - 96) };
 }
 
 const demo = new Demo(defaultSizes, settings.cellSize, available());
