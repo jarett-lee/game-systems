@@ -85,10 +85,11 @@ export function prepareShowreel(demo: Demo): void {
   demo.reset(defaultSizes, showreelLayout);
   demo.holdBy = "where grabbed";
   demo.pickUpBy = "press and drag";
+  demo.alwaysNudge = false;
 }
 
 export async function playShowreel(demo: Demo, onCaption: (text: string) => void): Promise<void> {
-  const settings = { holdBy: demo.holdBy, pickUpBy: demo.pickUpBy };
+  const settings = { holdBy: demo.holdBy, pickUpBy: demo.pickUpBy, alwaysNudge: demo.alwaysNudge };
   prepareShowreel(demo);
   demo.move({ x: demo.layout.width / 2, y: demo.layout.height / 2 });
   for (const step of showreel) {

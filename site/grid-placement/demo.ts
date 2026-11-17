@@ -4,6 +4,7 @@ import {
   footprintBounds,
   itemAt,
   nudgeInside,
+  nudgeToFree,
   popOut,
   previewDrop,
   returnHeld,
@@ -36,11 +37,6 @@ export type Target = {
   readonly outcome: DropOutcome;
 };
 
-function distanceTo(frame: GridFrame, point: Point): number {
-  const dx = Math.max(frame.x - point.x, 0, point.x - (frame.x + frame.width));
-  const dy = Math.max(frame.y - point.y, 0, point.y - (frame.y + frame.height));
-  return Math.hypot(dx, dy);
-}
 
 export type HoldBy = "where grabbed" | "item center";
 
@@ -62,6 +58,7 @@ export class Demo {
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
   alwaysNudge = true;
+  nudgeReach = 1;
   nudgeAnimation: NudgeAnimation = "spring";
   motions: Motion[] = [];
   clock: () => number = () => performance.now();
@@ -126,15 +123,6 @@ export class Demo {
     };
   }
 
-  private targetAt(frame: GridFrame, origin: Cell, raw: Cell): Target {
-    return {
-      frame,
-      origin,
-      nudged: origin.x !== raw.x || origin.y !== raw.y,
-      outcome: previewDrop(this.inventory, frame.grid.id, origin),
-    };
-  }
-
   target(): Target | null {
     const footprint = this.heldFootprint();
     const corner = this.heldCorner();
@@ -145,19 +133,30 @@ export class Demo {
     const frames = [...this.layout.frames].sort(
       (a, b) => Number(insideFrame(b, anchor)) - Number(insideFrame(a, anchor)),
     );
-    const rawOrigin = (frame: GridFrame) => {
-      const cell = cellUnder(this.layout, frame, anchor);
-      return { x: cell.x - grabbed.x, y: cell.y - grabbed.y };
-    };
     for (const frame of frames) {
-      const origin = nudgeInside(this.inventory, frame.grid.id, rawOrigin(frame));
-      if (origin) return this.targetAt(frame, origin, rawOrigin(frame));
+      const cell = cellUnder(this.layout, frame, anchor);
+      const raw = { x: cell.x - grabbed.x, y: cell.y - grabbed.y };
+      const inside = nudgeInside(this.inventory, frame.grid.id, raw);
+      if (!inside) continue;
+      return this.withNudge(frame, raw, inside, anchor, cell);
     }
-    if (!this.alwaysNudge) return null;
-    const nearest = [...this.layout.frames].sort((a, b) => distanceTo(a, anchor) - distanceTo(b, anchor))[0];
-    if (!nearest) return null;
-    const origin = nudgeInside(this.inventory, nearest.grid.id, rawOrigin(nearest), "always");
-    return origin ? this.targetAt(nearest, origin, rawOrigin(nearest)) : null;
+    return null;
+  }
+
+  private withNudge(frame: GridFrame, raw: Cell, inside: Cell, anchor: Point, cell: Cell): Target {
+    const id = frame.grid.id;
+    const outcome = previewDrop(this.inventory, id, inside);
+    const moved = inside.x !== raw.x || inside.y !== raw.y;
+    if (!this.alwaysNudge || outcome.kind === "placed") return { frame, origin: inside, nudged: moved, outcome };
+
+    const center = cellOrigin(this.layout, frame, cell);
+    const lean = {
+      x: (anchor.x - (center.x + this.layout.cellSize / 2)) / this.layout.pitch,
+      y: (anchor.y - (center.y + this.layout.cellSize / 2)) / this.layout.pitch,
+    };
+    const free = nudgeToFree(this.inventory, id, inside, this.nudgeReach, lean);
+    if (!free) return { frame, origin: inside, nudged: moved, outcome };
+    return { frame, origin: free, nudged: true, outcome: previewDrop(this.inventory, id, free) };
   }
 
   press(point: Point): void {

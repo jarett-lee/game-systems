@@ -7,6 +7,7 @@ function demoWithShowreelLayout(): Demo {
   const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
   demo.reset(defaultSizes, showreelLayout);
   demo.holdBy = "where grabbed";
+  demo.alwaysNudge = false;
   return demo;
 }
 
@@ -137,24 +138,51 @@ describe("pushing", () => {
 });
 
 describe("always nudge", () => {
-  test("is on by default, so letting go outside the grids lands the item in the nearest grid", () => {
-    const demo = demoWithShowreelLayout();
+  function dropDotOntoL(demo: Demo) {
     const stash = frameFor(demo.layout, "stash");
-    const freeCorner = cellOrigin(demo.layout, stash, { x: 3, y: 0 });
-    const tonic = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
-    const grab = { x: tonic.x + 10, y: tonic.y + 10 };
+    const dot = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
+    const l = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: dot.x + 10, y: dot.y + 10 });
+    demo.move({ x: l.x + 10, y: l.y + 10 });
+    const target = demo.target();
+    demo.release({ x: l.x + 10, y: l.y + 10 });
+    return target;
+  }
 
-    demo.press(grab);
-    demo.move({ x: freeCorner.x + 300, y: freeCorner.y - 300 });
-    expect(demo.target()).toMatchObject({ origin: { x: 3, y: 0 }, nudged: true });
+  test("is on by default", () => {
+    expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).alwaysNudge).toBe(true);
+  });
 
-    demo.release({ x: freeCorner.x + 300, y: freeCorner.y - 300 });
+  test("slides the piece to a free spot next to it instead of swapping", () => {
+    const demo = demoWithShowreelLayout();
+    demo.alwaysNudge = true;
+
+    expect(dropDotOntoL(demo)).toMatchObject({ origin: { x: 1, y: 0 }, nudged: true, outcome: { kind: "placed" } });
+    expect(demo.inventory.hand).toBeNull();
     expect(demo.inventory.placements).toContainEqual({
       itemId: "dot-3",
       gridId: "stash",
-      origin: { x: 3, y: 0 },
+      origin: { x: 1, y: 0 },
       rotation: 0,
     });
+  });
+
+  test("swaps when nothing within reach is free", () => {
+    const demo = demoWithShowreelLayout();
+    demo.alwaysNudge = true;
+    demo.reset(defaultSizes, [
+      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 1 }, rotation: 0 },
+      { itemId: "dot-3", gridId: "stash", origin: { x: 3, y: 3 }, rotation: 0 },
+    ]);
+
+    expect(dropDotOntoL(demo)).toMatchObject({ nudged: false, outcome: { kind: "swapped" } });
+  });
+
+  test("when off, swaps right away", () => {
+    const demo = demoWithShowreelLayout();
+    expect(dropDotOntoL(demo)).toMatchObject({ nudged: false, outcome: { kind: "swapped" } });
   });
 });
 
@@ -233,11 +261,13 @@ describe("picking up by click", () => {
 
 describe("nudge animation", () => {
   function nudgedDrop(demo: Demo): void {
+    demo.alwaysNudge = true;
     const stash = frameFor(demo.layout, "stash");
-    const tonic = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
-    const corner = cellOrigin(demo.layout, stash, { x: 3, y: 0 });
-    demo.press({ x: tonic.x + 10, y: tonic.y + 10 });
-    demo.release({ x: corner.x + 300, y: corner.y - 300 });
+    const dot = cellOrigin(demo.layout, stash, { x: 3, y: 3 });
+    const l = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    demo.press({ x: dot.x + 10, y: dot.y + 10 });
+    demo.move({ x: l.x + 10, y: l.y + 10 });
+    demo.release({ x: l.x + 10, y: l.y + 10 });
   }
 
   test("a nudged drop animates the item from where it was let go into its cell", () => {
@@ -245,7 +275,7 @@ describe("nudge animation", () => {
     nudgedDrop(demo);
 
     const [motion] = demo.motions;
-    expect(motion).toMatchObject({ itemId: "dot-3", animation: demo.nudgeAnimation, offset: { x: 290, y: -310 } });
+    expect(motion).toMatchObject({ itemId: "dot-3", animation: demo.nudgeAnimation, offset: { x: -demo.layout.pitch, y: 0 } });
   });
 
   test("a drop that lands where it was let go does not animate", () => {

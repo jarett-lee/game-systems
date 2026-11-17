@@ -95,23 +95,38 @@ function itemsUnder(inventory: Inventory, gridId: string, cells: readonly Cell[]
   return [...found];
 }
 
-export type NudgeMode = "when overlapping" | "always";
-
-export function nudgeInside(
-  inventory: Inventory,
-  gridId: string,
-  origin: Cell,
-  mode: NudgeMode = "when overlapping",
-): Cell | null {
+export function nudgeInside(inventory: Inventory, gridId: string, origin: Cell): Cell | null {
   const { hand } = inventory;
   if (!hand) return null;
   const grid = findGrid(inventory, gridId);
   const cells = cellsCovered(inventory, hand.itemId, origin, hand.rotation);
-  if (mode === "when overlapping" && !cells.some((cell) => insideGrid(grid, [cell]))) return null;
+  if (!cells.some((cell) => insideGrid(grid, [cell]))) return null;
 
   const { width, height } = footprintBounds(rotateFootprint(findItem(inventory, hand.itemId).footprint, hand.rotation));
   const clamp = (value: number, room: number) => Math.max(0, Math.min(value, room));
   return { x: clamp(origin.x, grid.width - width), y: clamp(origin.y, grid.height - height) };
+}
+
+export function nudgeToFree(
+  inventory: Inventory,
+  gridId: string,
+  origin: Cell,
+  reach: number,
+  toward: Cell = { x: 0, y: 0 },
+): Cell | null {
+  const candidates: Cell[] = [];
+  for (let dy = -reach; dy <= reach; dy++) {
+    for (let dx = -reach; dx <= reach; dx++) candidates.push({ x: dx, y: dy });
+  }
+  const steps = (shift: Cell) => Math.abs(shift.x) + Math.abs(shift.y);
+  const lean = (shift: Cell) => shift.x * toward.x + shift.y * toward.y;
+  candidates.sort((a, b) => steps(a) - steps(b) || lean(b) - lean(a) || a.y - b.y || a.x - b.x);
+
+  for (const shift of candidates) {
+    const nudged = { x: origin.x + shift.x, y: origin.y + shift.y };
+    if (previewDrop(inventory, gridId, nudged).kind === "placed") return nudged;
+  }
+  return null;
 }
 
 function fits(inventory: Inventory, placement: Placement): boolean {
