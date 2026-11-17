@@ -10,8 +10,8 @@ function demoWithShowreelLayout(): Demo {
   return demo;
 }
 
-test("nudges slide by default", () => {
-  expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).nudgeAnimation).toBe("slide");
+test("animations ease out by default", () => {
+  expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).nudgeAnimation).toBe("ease out");
 });
 
 test("items are held by their center unless set otherwise", () => {

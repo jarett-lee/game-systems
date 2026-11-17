@@ -175,11 +175,10 @@ pane.addBinding(demo, "holdBy", {
   options: { "where grabbed": "where grabbed", "item center": "item center" },
 });
 const timing = pane.addFolder({ title: "Animation timing", expanded: false });
-timing.addBinding(animationSettings, "slideDuration", { label: "slide ms", min: 50, max: 1000, step: 10 });
-timing.addBinding(animationSettings, "springDuration", { label: "spring ms", min: 50, max: 1000, step: 10 });
+for (const animation of Object.keys(animationSettings.durations) as (keyof typeof animationSettings.durations)[]) {
+  timing.addBinding(animationSettings.durations, animation, { label: `${animation} ms`, min: 50, max: 1500, step: 10 });
+}
 timing.addBinding(animationSettings, "springOvershoot", { label: "spring overshoot", min: 0, max: 5, step: 0.1 });
-timing.addBinding(animationSettings, "bounceDuration", { label: "bounce ms", min: 50, max: 1500, step: 10 });
-timing.addBinding(animationSettings, "popDuration", { label: "pop ms", min: 50, max: 1000, step: 10 });
 timing.addBinding(animationSettings, "popSwell", { label: "pop swell", min: 0, max: 0.5, step: 0.01 });
 pane.addButton({ title: "Rotate held (R)" }).on("click", () => demo.rotate("clockwise"));
 pane.addButton({ title: "Rotate held back (E)" }).on("click", () => demo.rotate("counter-clockwise"));
