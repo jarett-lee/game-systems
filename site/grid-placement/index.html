@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grid Placement</title>
+    <meta name="description" content="Drag, rotate, and swap items of any shape across inventory grids." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <p class="eyebrow"><a href="../">game-systems</a> / demo</p>
+        <h1>Grid Placement</h1>
+        <p class="lede">
+          Drag items of any shape between two grids. Press <kbd>R</kbd> or right-click to rotate, or tap with a second
+          finger. Drop onto one item to swap it out. <kbd>Esc</kbd> stows what you're holding.
+        </p>
+      </header>
+      <div class="workspace">
+        <section class="stage" aria-label="Grid placement demo">
+          <canvas></canvas>
+          <p class="caption" hidden></p>
+          <p class="status" role="status"></p>
+        </section>
+        <aside class="controls"></aside>
+      </div>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

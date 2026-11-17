@@ -36,6 +36,16 @@ docs/adr/  decisions and why they were made
 - **No comments in code.** Names, types, and tests carry the meaning. If code needs a comment to be understood, rename it, extract it, encode it in a type, or cover it with a test. `npm run lint` enforces this with a local ESLint rule ([tools/eslint/no-comments.js](tools/eslint/no-comments.js)) that rejects every comment, including `eslint-disable` and `@ts-expect-error`, and inline ESLint config is turned off so it can't be bypassed. The writing about how and why a system works goes in its README and Posts instead.
 - **The site** uses Vite, a canvas for visuals, and Tweakpane for each Demo's controls. It redeploys on every push to `main`.
 
+## Run it
+
+```bash
+npm install
+npm run dev
+npm run check
+```
+
+`npm run dev` serves the Demo site locally. `npm run check` runs the typecheck, lint, tests, and build, the same as CI.
+
 ## How a system ships
 
 1. A new system is built on its own branch.

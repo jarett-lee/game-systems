@@ -20,6 +20,12 @@ Its words (Grid, Cell, Item, Footprint, Rotation, Hand, Pop out, Swap) are defin
 
 Two Grids side by side, with Tweakpane controls. The Showreel drags, rotates, swaps, and moves Items between the Grids.
 
+## Code
+
+- [src/footprint.ts](src/footprint.ts): Footprints and Rotation.
+- [src/inventory.ts](src/inventory.ts): Grids, Placements, the Hand, and every move: drop (place, swap, or reject), pop out, rotate, stow. Every function takes an inventory and returns a new one, so nothing is mutated.
+- The Demo lives in [site/grid-placement](../../site/grid-placement/). Open it with `?showreel` to play the Showreel full-screen for recording.
+
 ## Status
 
-Not started. Built on its own branch; it's **built** once code, tests, Demo, and Showreel are merged to `main`.
+Code, tests, Demo, and Showreel are done on the `grid-placement` branch. It's **built** once that branch is merged to `main`.
