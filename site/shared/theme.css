@@ -1,0 +1,80 @@
+:root {
+  --navy: #272b3d;
+  --navy-deep: #1f2231;
+  --navy-raised: #333850;
+  --coral: #f0a08a;
+  --slate: #8c95a6;
+  --slate-deep: #6b7386;
+  --pale: #d4d4d8;
+  --ink: #ecebe8;
+  --ink-dim: #a9adba;
+  --gap: 4px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--navy);
+  color: var(--ink);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+a {
+  color: var(--coral);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--coral);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 4px 0 8px;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  margin: 0 0 24px;
+  max-width: 60ch;
+  color: var(--ink-dim);
+}
+
+.dot {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--coral);
+}

@@ -1,0 +1,36 @@
+.demos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+  padding: 20px;
+  background: var(--slate);
+  background-image: linear-gradient(180deg, var(--slate), var(--slate-deep));
+  color: var(--navy);
+  text-decoration: none;
+  transition: background 120ms;
+}
+
+.demo-card:hover,
+.demo-card:focus-visible {
+  background: var(--coral);
+  outline: none;
+}
+
+.demo-name {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.demo-blurb {
+  color: var(--navy-deep);
+}
