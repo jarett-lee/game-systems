@@ -9,7 +9,7 @@
     "test": "vitest run",
     "typecheck": "tsc",
     "lint": "eslint .",
-    "test:lint-rules": "node --test tools/eslint/",
+    "test:lint-rules": "node --test \"tools/eslint/*.test.js\"",
     "check": "npm run typecheck && npm run lint && npm run test && npm run test:lint-rules && npm run build"
   },
   "devDependencies": {
