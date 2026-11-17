@@ -172,11 +172,12 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
   if (held && target) drawTarget(ctx, palette, demo, target, held);
 
   const grabbed = held?.[demo.grabIndex];
-  if (held && grabbed && demo.pointer && inventory.hand) {
+  const corner = demo.heldCorner();
+  if (held && grabbed && corner && demo.pointer && inventory.hand) {
     const pointer = demo.pointer;
     const at = (cell: Cell): Point => ({
-      x: pointer.x + (cell.x - grabbed.x) * layout.pitch - layout.cellSize / 2,
-      y: pointer.y + (cell.y - grabbed.y) * layout.pitch - layout.cellSize / 2,
+      x: corner.x + (cell.x - grabbed.x) * layout.pitch,
+      y: corner.y + (cell.y - grabbed.y) * layout.pitch,
     });
     ctx.globalAlpha = 0.88;
     drawItem(ctx, palette, layout, catalogItem(inventory.hand.itemId), held, at);

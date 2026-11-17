@@ -69,8 +69,13 @@ canvas.addEventListener("pointerdown", (event) => {
     return;
   }
   primaryPointer = event.pointerId;
-  canvas.setPointerCapture(event.pointerId);
   demo.press(toCanvas(event));
+  if (canvas.hasPointerCapture(event.pointerId)) return;
+  try {
+    canvas.setPointerCapture(event.pointerId);
+  } catch {
+    primaryPointer = event.pointerId;
+  }
 });
 
 canvas.addEventListener("pointermove", (event) => {

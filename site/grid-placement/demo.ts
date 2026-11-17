@@ -14,7 +14,16 @@ import {
   type Placement,
 } from "../../systems/grid-placement/src";
 import { catalog, catalogItem, type GridSizes } from "./catalog";
-import { cellUnder, computeLayout, frameNear, insideFrame, type GridFrame, type Layout, type Point } from "./layout";
+import {
+  cellOrigin,
+  cellUnder,
+  computeLayout,
+  frameNear,
+  insideFrame,
+  type GridFrame,
+  type Layout,
+  type Point,
+} from "./layout";
 
 export type Target = { readonly frame: GridFrame; readonly origin: Cell; readonly outcome: DropOutcome };
 
@@ -41,6 +50,7 @@ export class Demo {
   layout: Layout;
   pointer: Point | null = null;
   grabIndex = 0;
+  grabOffset: Point = { x: 0, y: 0 };
   message = "Drag an item. R or right-click rotates it.";
 
   constructor(
@@ -84,13 +94,26 @@ export class Demo {
     return rotateFootprint(catalogItem(hand.itemId).footprint, hand.rotation);
   }
 
+  heldCorner(): Point | null {
+    if (!this.pointer || !this.inventory.hand) return null;
+    return { x: this.pointer.x - this.grabOffset.x, y: this.pointer.y - this.grabOffset.y };
+  }
+
+  private centerGrab(): void {
+    const footprint = this.heldFootprint();
+    this.grabIndex = footprint ? centerIndex(footprint) : 0;
+    this.grabOffset = { x: this.layout.cellSize / 2, y: this.layout.cellSize / 2 };
+  }
+
   target(): Target | null {
     const footprint = this.heldFootprint();
-    if (!footprint || !this.pointer) return null;
-    const frame = frameNear(this.layout, this.pointer);
+    const corner = this.heldCorner();
+    if (!footprint || !corner) return null;
+    const anchor = { x: corner.x + this.layout.cellSize / 2, y: corner.y + this.layout.cellSize / 2 };
+    const frame = frameNear(this.layout, anchor);
     const grabbed = footprint[this.grabIndex];
     if (!frame || !grabbed) return null;
-    const cell = cellUnder(this.layout, frame, this.pointer);
+    const cell = cellUnder(this.layout, frame, anchor);
     const origin = { x: cell.x - grabbed.x, y: cell.y - grabbed.y };
     return { frame, origin, outcome: previewDrop(this.inventory, frame.grid.id, origin) };
   }
@@ -112,6 +135,8 @@ export class Demo {
       0,
       footprint.findIndex((c) => c.x === cell.x - placement.origin.x && c.y === cell.y - placement.origin.y),
     );
+    const corner = cellOrigin(this.layout, frame, cell);
+    this.grabOffset = { x: point.x - corner.x, y: point.y - corner.y };
     this.inventory = result.inventory;
     this.message = `Picked up the ${itemId}`;
   }
@@ -131,15 +156,13 @@ export class Demo {
     const result = drop(this.inventory, target.frame.grid.id, target.origin);
     this.inventory = result.inventory;
     this.message = describeDrop(result.outcome);
-    if (result.outcome.kind === "swapped") {
-      const footprint = this.heldFootprint();
-      this.grabIndex = footprint ? centerIndex(footprint) : 0;
-    }
+    if (result.outcome.kind === "swapped") this.centerGrab();
   }
 
   rotate(): void {
     if (!this.inventory.hand) return;
     this.inventory = rotateHand(this.inventory);
+    this.grabOffset = { x: this.layout.cellSize - this.grabOffset.y, y: this.grabOffset.x };
     this.message = "Rotated";
   }
 

@@ -48,12 +48,14 @@ npm run check
 
 ## How a system ships
 
-1. A new system is built on its own branch.
-2. It's **built** once its code, tests, Demo, and Showreel (a scripted sequence that plays the Demo by itself) are merged to `main`.
-3. The build then prepares drafts of every Post automatically: the Showreel recorded in vertical and landscape, a voiceover script, and the blog post, captions, hashtags, and keywords.
-4. I record the voiceover. The scripts mix it in and add subtitles.
-5. I preview everything, ask for edits, and confirm. Nothing is published without that.
-6. Posts go out: automatically to Bluesky, YouTube Shorts, dev.to, and jarett-lee.com (the original of the blog post); X and Instagram are prepared for me to upload.
+1. A new system's code, tests, and Demo are built on its own branch.
+2. **Review pause.** The build stops so I can check that the system is what I wanted and the Demo feels good to use. Changes I ask for get made, and it waits again until I say it's right.
+3. The Showreel (a scripted sequence that plays the Demo by itself) is written after the review, so it shows the Demo as approved.
+4. It's **built** once its code, tests, Demo, and Showreel are merged to `main`.
+5. The build then prepares drafts of every Post automatically: the Showreel recorded in vertical and landscape, a voiceover script, and the blog post, captions, hashtags, and keywords.
+6. I record the voiceover. The scripts mix it in and add subtitles.
+7. I preview everything, ask for edits, and confirm. Nothing is published without that.
+8. Posts go out: automatically to Bluesky, YouTube Shorts, dev.to, and jarett-lee.com (the original of the blog post); X and Instagram are prepared for me to upload.
 
 Later Posts about a system, for example after a big update, happen whenever I ask for them.
 
