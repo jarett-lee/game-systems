@@ -221,6 +221,28 @@ describe("rotation animation", () => {
     expect(demo.spinFor(1000)?.angle).toBeCloseTo(-Math.PI);
   });
 
+  test("the preview turns around the same spot on the piece as the pointer", () => {
+    const demo = demoWithShowreelLayout();
+    const stash = frameFor(demo.layout, "stash");
+    holdBar(demo);
+    const free = cellOrigin(demo.layout, stash, { x: 2, y: 0 });
+    const pointer = { x: free.x + 10, y: free.y + 10 };
+    demo.move(pointer);
+    demo.rotate("clockwise");
+
+    const target = demo.target();
+    if (!target) throw new Error("no target");
+    const corner = demo.heldCorner();
+    const grabbed = demo.heldFootprint()?.[demo.grabIndex];
+    if (!corner || !grabbed) throw new Error("not holding");
+    const shift = {
+      x: cellOrigin(demo.layout, stash, { x: target.origin.x + grabbed.x, y: target.origin.y + grabbed.y }).x - corner.x,
+      y: cellOrigin(demo.layout, stash, { x: target.origin.x + grabbed.x, y: target.origin.y + grabbed.y }).y - corner.y,
+    };
+
+    expect(demo.turnPivot(target)).toEqual({ x: pointer.x + shift.x, y: pointer.y + shift.y });
+  });
+
   test("choosing none turns it off", () => {
     const demo = demoWithShowreelLayout();
     demo.nudgeAnimation = "none";

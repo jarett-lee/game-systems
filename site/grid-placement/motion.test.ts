@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { motionAt, nudgeAnimations, type Motion } from "./motion";
+import { animationSettings, motionAt, nudgeAnimations, type Motion } from "./motion";
 
 const motion = (animation: Motion["animation"]): Motion => ({
   itemId: "T",
@@ -31,4 +31,13 @@ test("bounce never passes its cell", () => {
 test("pop swells the item while it slides", () => {
   const scales = Array.from({ length: 40 }, (_, step) => motionAt(motion("pop"), 1000 + step * 8)?.scale ?? 1);
   expect(Math.max(...scales)).toBeGreaterThan(1.05);
+});
+
+test("a longer duration slows the animation down", () => {
+  const before = motionAt(motion("slide"), 1100)?.offset.x ?? 0;
+  const saved = animationSettings.slideDuration;
+  animationSettings.slideDuration = 800;
+  const after = motionAt(motion("slide"), 1100)?.offset.x ?? 0;
+  animationSettings.slideDuration = saved;
+  expect(after).toBeGreaterThan(before);
 });

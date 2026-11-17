@@ -2,7 +2,7 @@ import { Pane } from "tweakpane";
 import { mountBackdrop } from "../shared/backdrop";
 import { defaultSizes, type GridSizes } from "./catalog";
 import { Demo } from "./demo";
-import { nudgeAnimations } from "./motion";
+import { animationSettings, nudgeAnimations } from "./motion";
 import { readPalette, render } from "./render";
 import { playShowreel } from "./showreel";
 
@@ -174,6 +174,13 @@ pane.addBinding(demo, "holdBy", {
   label: "hold item by",
   options: { "where grabbed": "where grabbed", "item center": "item center" },
 });
+const timing = pane.addFolder({ title: "Animation timing", expanded: false });
+timing.addBinding(animationSettings, "slideDuration", { label: "slide ms", min: 50, max: 1000, step: 10 });
+timing.addBinding(animationSettings, "springDuration", { label: "spring ms", min: 50, max: 1000, step: 10 });
+timing.addBinding(animationSettings, "springOvershoot", { label: "spring overshoot", min: 0, max: 5, step: 0.1 });
+timing.addBinding(animationSettings, "bounceDuration", { label: "bounce ms", min: 50, max: 1500, step: 10 });
+timing.addBinding(animationSettings, "popDuration", { label: "pop ms", min: 50, max: 1000, step: 10 });
+timing.addBinding(animationSettings, "popSwell", { label: "pop swell", min: 0, max: 0.5, step: 0.01 });
 pane.addButton({ title: "Rotate held (R)" }).on("click", () => demo.rotate("clockwise"));
 pane.addButton({ title: "Rotate held back (E)" }).on("click", () => demo.rotate("counter-clockwise"));
 pane.addButton({ title: "Stow held (Esc)" }).on("click", () => demo.stowHeld());

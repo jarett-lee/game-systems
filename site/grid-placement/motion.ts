@@ -15,8 +15,17 @@ export type MotionFrame = { readonly offset: Point; readonly scale: number };
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
+export const animationSettings = {
+  slideDuration: 200,
+  springDuration: 420,
+  springOvershoot: 2.2,
+  bounceDuration: 520,
+  popDuration: 260,
+  popSwell: 0.14,
+};
+
 const easeOutBack = (t: number) => {
-  const overshoot = 2.2;
+  const overshoot = animationSettings.springOvershoot;
   return 1 + (overshoot + 1) * (t - 1) ** 3 + overshoot * (t - 1) ** 2;
 };
 
@@ -29,12 +38,21 @@ const easeOutBounce = (t: number) => {
   return n * (t - 2.625 / d) ** 2 + 0.984375;
 };
 
-const styles: Record<Motion["animation"], { duration: number; ease: (t: number) => number; swell: number }> = {
-  slide: { duration: 200, ease: easeOutCubic, swell: 0 },
-  spring: { duration: 420, ease: easeOutBack, swell: 0 },
-  bounce: { duration: 520, ease: easeOutBounce, swell: 0 },
-  pop: { duration: 260, ease: easeOutCubic, swell: 0.14 },
-};
+type Style = { readonly duration: number; readonly ease: (t: number) => number; readonly swell: number };
+
+function styleOf(animation: Motion["animation"]): Style {
+  const settings = animationSettings;
+  switch (animation) {
+    case "slide":
+      return { duration: settings.slideDuration, ease: easeOutCubic, swell: 0 };
+    case "spring":
+      return { duration: settings.springDuration, ease: easeOutBack, swell: 0 };
+    case "bounce":
+      return { duration: settings.bounceDuration, ease: easeOutBounce, swell: 0 };
+    case "pop":
+      return { duration: settings.popDuration, ease: easeOutCubic, swell: settings.popSwell };
+  }
+}
 
 export type Spin = {
   readonly angle: number;
@@ -43,7 +61,7 @@ export type Spin = {
 };
 
 function settling(animation: Motion["animation"], start: number, now: number) {
-  const style = styles[animation];
+  const style = styleOf(animation);
   const t = (now - start) / style.duration;
   if (t >= 1) return null;
   const progress = Math.max(0, t);

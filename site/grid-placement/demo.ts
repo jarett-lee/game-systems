@@ -339,6 +339,14 @@ export class Demo {
     this.spin = this.nudgeAnimation === "none" ? null : { angle: shown + turn, start: now, animation: this.nudgeAnimation };
   }
 
+  turnPivot(target: Target): Point | null {
+    const grabbed = this.heldFootprint()?.[this.grabIndex];
+    if (!grabbed) return null;
+    const cell = { x: target.origin.x + grabbed.x, y: target.origin.y + grabbed.y };
+    const corner = cellOrigin(this.layout, target.frame, cell);
+    return { x: corner.x + this.grabOffset.x, y: corner.y + this.grabOffset.y };
+  }
+
   spinFor(now: number): { angle: number; scale: number } | null {
     const frame = this.spin && spinAt(this.spin, now);
     if (!frame) this.spin = null;
