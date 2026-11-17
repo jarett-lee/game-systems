@@ -80,20 +80,51 @@ describe("letting go where it can't land", () => {
     });
   });
 
-  test("onto two items also sends it back", () => {
-    const demo = demoWithShowreelLayout();
+  test("a drop the System rejects also sends it back", () => {
+    const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
+    const full = { backpackWidth: 2, backpackHeight: 2, stashWidth: 2, stashHeight: 2 };
+    demo.reset(full, [
+      { itemId: "potion", gridId: "backpack", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "gem", gridId: "backpack", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "tonic", gridId: "backpack", origin: { x: 0, y: 1 }, rotation: 0 },
+      { itemId: "scroll", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+    ]);
+    const stash = frameFor(demo.layout, "stash");
     const backpack = frameFor(demo.layout, "backpack");
-    const shield = cellOrigin(demo.layout, backpack, { x: 1, y: 1 });
-    const grab = { x: shield.x + 10, y: shield.y + 10 };
+    const scroll = cellOrigin(demo.layout, stash, { x: 0, y: 0 });
+    const grab = { x: scroll.x + 10, y: scroll.y + 10 };
+    const over = cellOrigin(demo.layout, backpack, { x: 0, y: 0 });
 
     demo.press(grab);
-    demo.release({ x: grab.x + 2 * demo.layout.pitch, y: grab.y });
+    demo.release({ x: over.x + 10, y: over.y + 10 });
 
+    expect(demo.message).toBe("Rejected: no room to push those items aside, so it went back to its spot");
+    expect(demo.inventory.placements).toContainEqual({
+      itemId: "scroll",
+      gridId: "stash",
+      origin: { x: 0, y: 0 },
+      rotation: 0,
+    });
+  });
+});
+
+describe("pushing", () => {
+  test("dropping onto two items pushes them aside", () => {
+    const demo = demoWithShowreelLayout();
+    const backpack = frameFor(demo.layout, "backpack");
+    const scroll = cellOrigin(demo.layout, backpack, { x: 0, y: 3 });
+    const grab = { x: scroll.x + 10, y: scroll.y + 10 };
+    const target = cellOrigin(demo.layout, backpack, { x: 2, y: 1 });
+
+    demo.press(grab);
+    demo.release({ x: target.x + 10, y: target.y + 10 });
+
+    expect(demo.message).toMatch(/^Pushed the /);
     expect(demo.inventory.hand).toBeNull();
     expect(demo.inventory.placements).toContainEqual({
-      itemId: "shield",
+      itemId: "scroll",
       gridId: "backpack",
-      origin: { x: 0, y: 0 },
+      origin: { x: 2, y: 1 },
       rotation: 0,
     });
   });
@@ -128,5 +159,46 @@ describe("holding by the item's center", () => {
     const corner = demo.heldCorner();
     const { pitch, gap, cellSize } = demo.layout;
     expect(corner && { x: corner.x + cellSize / 2, y: corner.y + (3 * pitch - gap) / 2 }).toEqual(grab);
+  });
+});
+
+describe("picking up by click", () => {
+  test("the first click picks the item up and the next click drops it", () => {
+    const demo = demoWithShowreelLayout();
+    demo.pickUpBy = "click";
+    const stash = frameFor(demo.layout, "stash");
+    const backpack = frameFor(demo.layout, "backpack");
+    const potion = cellOrigin(demo.layout, backpack, { x: 3, y: 0 });
+    const grab = { x: potion.x + 10, y: potion.y + 10 };
+    const free = cellOrigin(demo.layout, stash, { x: 2, y: 0 });
+    const dropAt = { x: free.x + 10, y: free.y + 10 };
+
+    demo.press(grab);
+    demo.release(grab);
+    expect(demo.inventory.hand?.itemId).toBe("potion");
+
+    demo.move(dropAt);
+    demo.press(dropAt);
+    demo.release(dropAt);
+    expect(demo.inventory.hand).toBeNull();
+    expect(demo.inventory.placements).toContainEqual({
+      itemId: "potion",
+      gridId: "stash",
+      origin: { x: 2, y: 0 },
+      rotation: 0,
+    });
+  });
+
+  test("press and drag stays the default, dropping on release", () => {
+    const demo = demoWithShowreelLayout();
+    const backpack = frameFor(demo.layout, "backpack");
+    const potion = cellOrigin(demo.layout, backpack, { x: 3, y: 0 });
+    const grab = { x: potion.x + 10, y: potion.y + 10 };
+
+    demo.press(grab);
+    demo.release(grab);
+
+    expect(demo.pickUpBy).toBe("press and drag");
+    expect(demo.inventory.hand).toBeNull();
   });
 });

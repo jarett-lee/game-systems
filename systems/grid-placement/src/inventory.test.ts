@@ -3,6 +3,7 @@ import {
   createInventory,
   drop,
   itemAt,
+  nudgeInside,
   popOut,
   previewDrop,
   returnHeld,
@@ -67,14 +68,15 @@ describe("rejected drops", () => {
     expect(inventory).toBe(start);
   });
 
-  test("covering two or more Items", () => {
-    let inventory = placedAt(emptyInventory(), "potion", "backpack", 0, 0);
-    inventory = placedAt(inventory, "gem", "backpack", 0, 2);
+  test("covering two or more Items with no room to push them aside", () => {
+    const full = createInventory([{ id: "tray", width: 1, height: 3 }, stash], [potion, sword, gem]);
+    let inventory = placedAt(full, "potion", "tray", 0, 0);
+    inventory = placedAt(inventory, "gem", "tray", 0, 2);
     const start = holding(inventory, "sword");
 
-    const result = drop(start, "backpack", { x: 0, y: 0 });
+    const result = drop(start, "tray", { x: 0, y: 0 });
 
-    expect(result.outcome).toEqual({ kind: "rejected", reason: "covers-several" });
+    expect(result.outcome).toEqual({ kind: "rejected", reason: "no-room-to-push" });
     expect(result.inventory).toBe(start);
   });
 
@@ -232,5 +234,71 @@ describe("returning the held Item", () => {
 
   test("is refused with nothing in the Hand", () => {
     expect(returnHeld(emptyInventory()).outcome).toEqual({ kind: "rejected", reason: "empty-hand" });
+  });
+});
+
+describe("pushing", () => {
+  function potionAndGemUnderSword(): Inventory {
+    const inventory = placedAt(emptyInventory(), "potion", "backpack", 0, 0);
+    return holding(placedAt(inventory, "gem", "backpack", 0, 2), "sword");
+  }
+
+  test("covering two or more Items moves them to the nearest free spots so the held Item fits", () => {
+    const result = drop(potionAndGemUnderSword(), "backpack", { x: 0, y: 0 });
+
+    expect(result.outcome).toEqual({
+      kind: "pushed",
+      pushed: [
+        { itemId: "potion", gridId: "backpack", origin: { x: 1, y: 0 }, rotation: 0 },
+        { itemId: "gem", gridId: "backpack", origin: { x: 1, y: 2 }, rotation: 0 },
+      ],
+    });
+    expect(result.inventory.hand).toBeNull();
+    expect(itemAt(result.inventory, "backpack", { x: 0, y: 1 })).toBe("sword");
+    expect(itemAt(result.inventory, "backpack", { x: 1, y: 0 })).toBe("potion");
+    expect(itemAt(result.inventory, "backpack", { x: 1, y: 2 })).toBe("gem");
+  });
+
+  test("pushed Items stay in the same Grid, even when another Grid has room", () => {
+    const tray = createInventory([{ id: "tray", width: 1, height: 3 }, stash], [potion, sword, gem]);
+    let inventory = placedAt(tray, "potion", "tray", 0, 0);
+    inventory = placedAt(inventory, "gem", "tray", 0, 1);
+
+    expect(previewDrop(holding(inventory, "sword"), "tray", { x: 0, y: 0 })).toEqual({
+      kind: "rejected",
+      reason: "no-room-to-push",
+    });
+  });
+
+  test("previewDrop shows the push without changing anything", () => {
+    const start = potionAndGemUnderSword();
+    expect(previewDrop(start, "backpack", { x: 0, y: 0 }).kind).toBe("pushed");
+    expect(itemAt(start, "backpack", { x: 0, y: 0 })).toBe("potion");
+  });
+});
+
+describe("nudging inside a Grid", () => {
+  test("leaves an origin alone when the whole Footprint is already inside", () => {
+    expect(nudgeInside(holding(emptyInventory(), "sword"), "backpack", { x: 1, y: 0 })).toEqual({ x: 1, y: 0 });
+  });
+
+  test("moves the held Item fully inside when part of it hangs off an edge", () => {
+    const start = holding(emptyInventory(), "sword");
+    expect(nudgeInside(start, "backpack", { x: 3, y: 1 })).toEqual({ x: 3, y: 0 });
+    expect(nudgeInside(start, "backpack", { x: -1, y: -2 })).toBeNull();
+    expect(nudgeInside(start, "backpack", { x: 0, y: -2 })).toEqual({ x: 0, y: 0 });
+  });
+
+  test("gives up when no Cell of the held Item is over the Grid", () => {
+    expect(nudgeInside(holding(emptyInventory(), "sword"), "backpack", { x: 5, y: 0 })).toBeNull();
+  });
+
+  test("still lets the drop reject an Item too big for the Grid", () => {
+    const small = createInventory([{ id: "pouch", width: 2, height: 2 }], [sword]);
+    const start = holding(small, "sword");
+    const origin = nudgeInside(start, "pouch", { x: 0, y: 0 });
+
+    expect(origin).toEqual({ x: 0, y: 0 });
+    expect(origin && previewDrop(start, "pouch", origin)).toEqual({ kind: "rejected", reason: "out-of-bounds" });
   });
 });

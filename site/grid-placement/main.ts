@@ -102,6 +102,24 @@ canvas.addEventListener("contextmenu", (event) => {
   if (!playing) demo.rotate();
 });
 
+let wheelTravel = 0;
+let lastWheelTurn = 0;
+
+window.addEventListener(
+  "wheel",
+  (event) => {
+    if (playing || !demo.inventory.hand) return;
+    event.preventDefault();
+    wheelTravel += event.deltaY;
+    const now = performance.now();
+    if (Math.abs(wheelTravel) < 40 || now - lastWheelTurn < 120) return;
+    demo.rotate(wheelTravel > 0 ? "clockwise" : "counter-clockwise");
+    wheelTravel = 0;
+    lastWheelTurn = now;
+  },
+  { passive: false },
+);
+
 window.addEventListener("keydown", (event) => {
   if (playing) return;
   if (event.key === "r" || event.key === "R") demo.rotate("clockwise");
@@ -139,6 +157,10 @@ grids.addBinding(settings, "backpackHeight", { label: "backpack h", min: 2, max:
 grids.addBinding(settings, "stashWidth", { label: "stash w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);
 grids.addBinding(settings, "stashHeight", { label: "stash h", min: 2, max: 8, step: 1 }).on("change", resetFromSettings);
 pane.addBinding(settings, "cellSize", { label: "cell size", min: 28, max: 96, step: 2 }).on("change", relayout);
+pane.addBinding(demo, "pickUpBy", {
+  label: "pick up by",
+  options: { "press and drag": "press and drag", click: "click" },
+});
 pane.addBinding(demo, "holdBy", {
   label: "hold item by",
   options: { "where grabbed": "where grabbed", "item center": "item center" },

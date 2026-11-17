@@ -26,7 +26,7 @@ export const showreel: readonly Step[] = [
   { do: "move", to: at("stash", 2, 2) },
   { do: "release" },
   { do: "wait", ms: 500 },
-  { do: "caption", text: "Two items underneath? Rejected." },
+  { do: "caption", text: "Two items underneath? They get pushed aside." },
   { do: "press", at: at("backpack", 1, 1) },
   { do: "move", to: at("backpack", 3, 1) },
   { do: "wait", ms: 1200 },

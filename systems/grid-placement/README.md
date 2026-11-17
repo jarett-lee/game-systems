@@ -2,14 +2,17 @@
 
 The first Game System: placing items on cell grids by dragging, dropping, rotating, and popping them in and out, in the style of a grid inventory.
 
-Its words (Grid, Cell, Item, Footprint, Rotation, Hand, Pop out, Swap) are defined in [GLOSSARY.md](GLOSSARY.md).
+Its words (Grid, Cell, Item, Footprint, Rotation, Placement, Hand, Pop out, Swap, Push, Nudge, Return, Stow) are defined in [GLOSSARY.md](GLOSSARY.md).
 
 ## Scope for version 1
 
 - **Any shape**: an Item's Footprint can be any shape made of Cells, not only rectangles.
-- **Rotation** in 90° steps. Items are never mirrored.
+- **Rotation** in 90° steps, either direction. Items are never mirrored.
 - **Several Grids**, such as a backpack and a stash. Items move between them.
-- **Swap**: dropping an Item where it covers exactly one other Item places it and pops the covered Item out into the Hand. A drop that would cover two or more Items is rejected.
+- **Swap**: dropping an Item where it covers exactly one other Item places it and pops the covered Item out into the Hand.
+- **Push**: dropping an Item where it covers two or more Items moves them to the nearest free spots in the same Grid. If they can't all move, the drop is rejected.
+- **Nudge**: if any Cell of the held Item is over a Grid, the Item is moved fully inside that Grid before it drops.
+- **Return**: letting go where the Item can't land puts it back where it came from, or stows it if a swap took that spot.
 - **Pop out**: picking an Item up moves it from its Grid into the Hand.
 
 ## Not in version 1

@@ -123,6 +123,20 @@ function drawTarget(ctx: CanvasRenderingContext2D, palette: Palette, demo: Demo,
   }
   ctx.globalAlpha = 1;
 
+  if (outcome.kind === "pushed") {
+    for (const destination of outcome.pushed) {
+      const at = (cell: Cell) => cellOrigin(layout, frame, cell);
+      const cellsThere = placementCells(inventory, destination);
+      drawItem(ctx, palette, layout, catalogItem(destination.itemId), cellsThere, at);
+      const box = bounds(mergedRects(cellsThere, layout, at));
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = palette.coral;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(box.x - 3, box.y - 3, box.width + 6, box.height + 6);
+      ctx.setLineDash([]);
+    }
+  }
+
   if (outcome.kind === "swapped") {
     const popped = inventory.placements.find((placement) => placement.itemId === outcome.poppedItemId);
     if (!popped) return;
@@ -159,16 +173,20 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
 
   for (const frame of layout.frames) drawFrame(ctx, palette, layout, frame);
 
+  const held = demo.heldFootprint();
+  const target = demo.target();
+  const pushedIds = target?.outcome.kind === "pushed" ? target.outcome.pushed.map((placement) => placement.itemId) : [];
+
   for (const placement of inventory.placements) {
     const frame = layout.frames.find((candidate) => candidate.grid.id === placement.gridId);
     if (!frame) continue;
+    ctx.globalAlpha = pushedIds.includes(placement.itemId) ? 0.22 : 1;
     drawItem(ctx, palette, layout, catalogItem(placement.itemId), placementCells(inventory, placement), (cell) =>
       cellOrigin(layout, frame, cell),
     );
+    ctx.globalAlpha = 1;
   }
 
-  const held = demo.heldFootprint();
-  const target = demo.target();
   if (held && target) drawTarget(ctx, palette, demo, target, held);
 
   const grabbed = held?.[demo.grabIndex];

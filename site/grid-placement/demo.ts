@@ -3,6 +3,7 @@ import {
   drop,
   footprintBounds,
   itemAt,
+  nudgeInside,
   popOut,
   previewDrop,
   returnHeld,
@@ -21,7 +22,6 @@ import {
   cellOrigin,
   cellUnder,
   computeLayout,
-  frameNear,
   insideFrame,
   type GridFrame,
   type Layout,
@@ -31,6 +31,8 @@ import {
 export type Target = { readonly frame: GridFrame; readonly origin: Cell; readonly outcome: DropOutcome };
 
 export type HoldBy = "where grabbed" | "item center";
+
+export type PickUpBy = "press and drag" | "click";
 
 function gridsFor(sizes: GridSizes) {
   return [
@@ -46,6 +48,8 @@ export class Demo {
   grabIndex = 0;
   grabOffset: Point = { x: 0, y: 0 };
   holdBy: HoldBy = "where grabbed";
+  pickUpBy: PickUpBy = "press and drag";
+  private pickedUpThisPress = false;
   message = "Drag an item. R or right-click rotates it, E rotates it back.";
 
   constructor(
@@ -110,13 +114,18 @@ export class Demo {
     const footprint = this.heldFootprint();
     const corner = this.heldCorner();
     if (!footprint || !corner) return null;
-    const anchor = { x: corner.x + this.layout.cellSize / 2, y: corner.y + this.layout.cellSize / 2 };
-    const frame = frameNear(this.layout, anchor);
     const grabbed = footprint[this.grabIndex];
-    if (!frame || !grabbed) return null;
-    const cell = cellUnder(this.layout, frame, anchor);
-    const origin = { x: cell.x - grabbed.x, y: cell.y - grabbed.y };
-    return { frame, origin, outcome: previewDrop(this.inventory, frame.grid.id, origin) };
+    if (!grabbed) return null;
+    const anchor = { x: corner.x + this.layout.cellSize / 2, y: corner.y + this.layout.cellSize / 2 };
+    const frames = [...this.layout.frames].sort(
+      (a, b) => Number(insideFrame(b, anchor)) - Number(insideFrame(a, anchor)),
+    );
+    for (const frame of frames) {
+      const cell = cellUnder(this.layout, frame, anchor);
+      const origin = nudgeInside(this.inventory, frame.grid.id, { x: cell.x - grabbed.x, y: cell.y - grabbed.y });
+      if (origin) return { frame, origin, outcome: previewDrop(this.inventory, frame.grid.id, origin) };
+    }
+    return null;
   }
 
   press(point: Point): void {
@@ -140,7 +149,9 @@ export class Demo {
     this.grabOffset = { x: point.x - corner.x, y: point.y - corner.y };
     this.inventory = result.inventory;
     if (this.holdBy === "item center") this.holdByCenter();
-    this.message = `Picked up the ${itemId}`;
+    this.pickedUpThisPress = true;
+    this.message =
+      this.pickUpBy === "click" ? `Picked up the ${itemId}. Click again to drop it` : `Picked up the ${itemId}`;
   }
 
   move(point: Point): void {
@@ -149,7 +160,10 @@ export class Demo {
 
   release(point: Point): void {
     this.pointer = point;
+    const justPickedUp = this.pickedUpThisPress;
+    this.pickedUpThisPress = false;
     if (!this.inventory.hand) return;
+    if (justPickedUp && this.pickUpBy === "click") return;
     const target = this.target();
     if (!target || target.outcome.kind === "rejected") {
       this.sendBack(target ? describeDrop(target.outcome) : "Dropped outside the grids");
@@ -202,8 +216,10 @@ export function describeDrop(outcome: DropOutcome): string {
       return "Placed";
     case "swapped":
       return `Swapped: the ${outcome.poppedItemId} popped out`;
+    case "pushed":
+      return `Pushed the ${outcome.pushed.map((placement) => placement.itemId).join(" and the ")} aside`;
     case "rejected":
-      if (outcome.reason === "covers-several") return "Rejected: it would cover two items";
+      if (outcome.reason === "no-room-to-push") return "Rejected: no room to push those items aside";
       if (outcome.reason === "out-of-bounds") return "Rejected: off the edge of the grid";
       return "Nothing in hand";
   }

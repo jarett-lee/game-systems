@@ -37,8 +37,16 @@ Moving an Item from a Grid into the Hand, either by picking it up or by being sw
 _Avoid_: Remove, eject, take
 
 **Swap**:
-Dropping the Item in Hand where its Footprint covers exactly one other Item: the dropped Item is placed and the covered Item pops out into the Hand. A drop that would cover two or more Items is rejected.
+Dropping the Item in Hand where its Footprint covers exactly one other Item: the dropped Item is placed and the covered Item pops out into the Hand. Covering two or more Items is a Push instead.
 _Avoid_: Replace, exchange, bump
+
+**Push**:
+Dropping the Item in Hand where its Footprint covers two or more Items: those Items move to the nearest free spots in the same Grid, turning if needed, so the dropped Item fits. If they can't all be moved, the drop is rejected.
+_Avoid_: Shove, bump, displace
+
+**Nudge**:
+Moving the Item in Hand fully inside a Grid when only part of its Footprint is over that Grid, so the drop can still happen.
+_Avoid_: Clamp, snap, fit
 
 **Return**:
 Putting the Item in Hand back at the Placement it was popped out from, with its old Rotation. Only possible while that spot is still free.

@@ -4,7 +4,7 @@ import { Demo } from "./demo";
 import { cellCenter, frameFor } from "./layout";
 import { showreel } from "./showreel";
 
-test("the Showreel shows a place, a rejection, a swap, and a move between grids", () => {
+test("the Showreel shows a place, a push preview, a swap, and a move between grids", () => {
   const demo = new Demo(defaultSizes, 64, { width: 1000, height: 700 });
   demo.reset(defaultSizes, showreelLayout);
   const shown: string[] = [];
@@ -32,7 +32,7 @@ test("the Showreel shows a place, a rejection, a swap, and a move between grids"
     "over:swapped",
     "over:placed",
     "Placed",
-    "over:rejected",
+    "over:pushed",
     "over:placed",
     "Placed",
     "over:swapped",
