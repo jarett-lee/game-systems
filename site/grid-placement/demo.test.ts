@@ -221,28 +221,6 @@ describe("rotation animation", () => {
     expect(demo.spinFor(1000)?.angle).toBeCloseTo(-Math.PI);
   });
 
-  test("the preview turns around the same spot on the piece as the pointer", () => {
-    const demo = demoWithShowreelLayout();
-    const stash = frameFor(demo.layout, "stash");
-    holdBar(demo);
-    const free = cellOrigin(demo.layout, stash, { x: 2, y: 0 });
-    const pointer = { x: free.x + 10, y: free.y + 10 };
-    demo.move(pointer);
-    demo.rotate("clockwise");
-
-    const target = demo.target();
-    if (!target) throw new Error("no target");
-    const corner = demo.heldCorner();
-    const grabbed = demo.heldFootprint()?.[demo.grabIndex];
-    if (!corner || !grabbed) throw new Error("not holding");
-    const shift = {
-      x: cellOrigin(demo.layout, stash, { x: target.origin.x + grabbed.x, y: target.origin.y + grabbed.y }).x - corner.x,
-      y: cellOrigin(demo.layout, stash, { x: target.origin.x + grabbed.x, y: target.origin.y + grabbed.y }).y - corner.y,
-    };
-
-    expect(demo.turnPivot(target)).toEqual({ x: pointer.x + shift.x, y: pointer.y + shift.y });
-  });
-
   test("choosing none turns it off", () => {
     const demo = demoWithShowreelLayout();
     demo.nudgeAnimation = "none";
@@ -474,5 +452,65 @@ describe("preview animation", () => {
     const demo = demoWithShowreelLayout();
     demo.nudgeAnimation = "none";
     expect(demo.previewMotions(hoverBarOffTheTop(demo), 1000).size).toBe(0);
+  });
+});
+
+describe("pushed pieces that turn", () => {
+  function hoverDominoBesideBar(demo: Demo) {
+    demo.oneCovered = "push";
+    demo.reset({ ...defaultSizes, stashWidth: 3, stashHeight: 3 }, [
+      { itemId: "I3", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-1", gridId: "stash", origin: { x: 2, y: 2 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 2 }, rotation: 0 },
+      { itemId: "domino", gridId: "backpack", origin: { x: 0, y: 0 }, rotation: 0 },
+    ]);
+    const backpack = frameFor(demo.layout, "backpack");
+    const stash = frameFor(demo.layout, "stash");
+    const domino = cellOrigin(demo.layout, backpack, { x: 0, y: 0 });
+    const aim = cellOrigin(demo.layout, stash, { x: 0, y: 1 });
+    demo.press({ x: domino.x + 10, y: domino.y + 10 });
+    demo.move({ x: aim.x + 10, y: aim.y + 10 });
+    return demo.target();
+  }
+
+  test("the push lays the bar flat", () => {
+    const target = hoverDominoBesideBar(demoWithShowreelLayout());
+    expect(target?.outcome).toMatchObject({ kind: "pushed", pushed: [{ itemId: "I3", origin: { x: 0, y: 0 }, rotation: expect.any(Number) }] });
+    if (target?.outcome.kind !== "pushed") return;
+    expect(target.outcome.pushed[0]?.rotation).not.toBe(0);
+  });
+
+  test("the preview turns the piece a quarter turn while it slides", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDominoBesideBar(demo);
+
+    const frame = demo.previewMotions(target, 1000).get("I3");
+
+    expect(Math.abs(frame?.angle ?? 0)).toBeCloseTo(Math.PI / 2);
+    expect(demo.previewMotions(target, 9000).get("I3")).toBeUndefined();
+  });
+
+  test("it turns back when the preview ends", () => {
+    const demo = demoWithShowreelLayout();
+    const target = hoverDominoBesideBar(demo);
+    const turn = demo.previewMotions(target, 1000).get("I3")?.angle ?? 0;
+    demo.previewMotions(target, 9000);
+
+    demo.previewMotions(null, 9000);
+
+    expect(demo.motionFor("I3", 9000)?.angle).toBeCloseTo(-turn);
+  });
+
+  test("a drop without a preview turns it as it lands", () => {
+    const demo = demoWithShowreelLayout();
+    demo.clock = () => 1000;
+    const target = hoverDominoBesideBar(demo);
+    if (!target) throw new Error("no target");
+    const stash = frameFor(demo.layout, "stash");
+    const aim = cellOrigin(demo.layout, stash, { x: 0, y: 1 });
+
+    demo.release({ x: aim.x + 10, y: aim.y + 10 });
+
+    expect(Math.abs(demo.motionFor("I3", 1000)?.angle ?? 0)).toBeCloseTo(Math.PI / 2);
   });
 });

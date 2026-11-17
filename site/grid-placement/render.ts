@@ -90,6 +90,7 @@ function moved(ctx: CanvasRenderingContext2D, motion: MotionFrame | undefined | 
     const cx = box.x + box.width / 2;
     const cy = box.y + box.height / 2;
     ctx.translate(cx + motion.offset.x, cy + motion.offset.y);
+    ctx.rotate(motion.angle);
     ctx.scale(motion.scale, motion.scale);
     ctx.translate(-cx, -cy);
   }
@@ -122,7 +123,6 @@ function drawTarget(
   target: Target,
   held: Footprint,
   motions: Map<string, MotionFrame>,
-  now: number,
 ): void {
   const { layout, inventory } = demo;
   const { frame, origin, outcome } = target;
@@ -140,15 +140,7 @@ function drawTarget(
 
   const ghost = mergedRects(cells, layout, (cell) => cellOrigin(layout, frame, cell));
   const heldId = inventory.hand?.itemId;
-  const spin = demo.spinFor(now);
-  const pivot = demo.turnPivot(target);
   moved(ctx, heldId ? motions.get(heldId) : null, bounds(ghost), () => {
-    if (spin && pivot) {
-      ctx.translate(pivot.x, pivot.y);
-      ctx.rotate(spin.angle);
-      ctx.scale(spin.scale, spin.scale);
-      ctx.translate(-pivot.x, -pivot.y);
-    }
     ctx.fillStyle = palette.slate;
     ctx.globalAlpha = 0.35;
     for (const rect of ghost) ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
@@ -221,7 +213,7 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
   }
 
   const previews = demo.previewMotions(target, now);
-  if (held && target) drawTarget(ctx, palette, demo, target, held, previews, now);
+  if (held && target) drawTarget(ctx, palette, demo, target, held, previews);
 
   const grabbed = held?.[demo.grabIndex];
   const corner = demo.heldCorner();

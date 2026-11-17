@@ -7,11 +7,12 @@ export type NudgeAnimation = (typeof nudgeAnimations)[number];
 export type Motion = {
   readonly itemId: string;
   readonly offset: Point;
+  readonly angle?: number;
   readonly start: number;
   readonly animation: Exclude<NudgeAnimation, "none">;
 };
 
-export type MotionFrame = { readonly offset: Point; readonly scale: number };
+export type MotionFrame = { readonly offset: Point; readonly angle: number; readonly scale: number };
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
@@ -73,6 +74,7 @@ export function motionAt(motion: Motion, now: number): MotionFrame | null {
   if (!frame) return null;
   return {
     offset: { x: motion.offset.x * frame.remaining, y: motion.offset.y * frame.remaining },
+    angle: (motion.angle ?? 0) * frame.remaining,
     scale: frame.scale,
   };
 }

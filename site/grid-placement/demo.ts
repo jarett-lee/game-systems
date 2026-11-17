@@ -4,6 +4,7 @@ import {
   footprintBounds,
   itemAt,
   nudgeInside,
+  placementCells,
   popOut,
   previewDrop,
   returnHeld,
@@ -38,6 +39,24 @@ export type Target = {
   readonly outcome: DropOutcome;
 };
 
+type Pose = { readonly at: Point; readonly angle: number };
+
+type Preview = { readonly key: string; readonly to: Pose; readonly motion: Motion };
+
+function shortestTurn(angle: number): number {
+  const turn = Math.PI * 2;
+  const wrapped = ((angle % turn) + turn) % turn;
+  return wrapped > Math.PI ? wrapped - turn : wrapped;
+}
+
+function shownPose(preview: Preview, now: number): Pose {
+  const shown = motionAt(preview.motion, now);
+  return {
+    at: { x: preview.to.at.x + (shown?.offset.x ?? 0), y: preview.to.at.y + (shown?.offset.y ?? 0) },
+    angle: preview.to.angle + (shown?.angle ?? 0),
+  };
+}
+
 export type HoldBy = "where grabbed" | "item center";
 
 export type PickUpBy = "press and drag" | "click";
@@ -61,7 +80,7 @@ export class Demo {
   nudgeAnimation: NudgeAnimation = "slide";
   motions: Motion[] = [];
   spin: Spin | null = null;
-  private previews = new Map<string, { key: string; to: Point; motion: Motion }>();
+  private previews = new Map<string, Preview>();
   clock: () => number = () => performance.now();
   private pickedUpThisPress = false;
   message = "Drag an item. R or right-click rotates it, E rotates it back.";
@@ -227,32 +246,46 @@ export class Demo {
       const previewed = this.previews.get(moved.itemId);
       if (previewed) {
         const frame = motionAt(previewed.motion, start);
-        if (frame) this.motions.push({ ...previewed.motion, offset: frame.offset, start, animation });
+        if (frame) this.motions.push({ ...previewed.motion, offset: frame.offset, angle: frame.angle, start, animation });
         continue;
       }
       const was = before.placements.find((placement) => placement.itemId === moved.itemId);
       if (!was) continue;
-      const from = cellOrigin(this.layout, target.frame, was.origin);
-      const to = cellOrigin(this.layout, target.frame, moved.origin);
-      this.motions.push({ itemId: moved.itemId, offset: { x: from.x - to.x, y: from.y - to.y }, start, animation });
+      this.motions.push(this.motionBetween(moved.itemId, this.poseOf(before, was), this.poseOf(before, moved), start));
     }
+  }
+
+  private poseOf(inventory: Inventory, placement: Placement): Pose {
+    const frame = this.layout.frames.find((candidate) => candidate.grid.id === placement.gridId);
+    const corners = placementCells(inventory, placement).map((cell) => (frame ? cellOrigin(this.layout, frame, cell) : cell));
+    const size = this.layout.cellSize;
+    const left = Math.min(...corners.map((corner) => corner.x));
+    const top = Math.min(...corners.map((corner) => corner.y));
+    const right = Math.max(...corners.map((corner) => corner.x)) + size;
+    const bottom = Math.max(...corners.map((corner) => corner.y)) + size;
+    return { at: { x: (left + right) / 2, y: (top + bottom) / 2 }, angle: (placement.rotation * Math.PI) / 2 };
+  }
+
+  private motionBetween(itemId: string, from: Pose, to: Pose, start: number): Motion {
+    return {
+      itemId,
+      offset: { x: from.at.x - to.at.x, y: from.at.y - to.at.y },
+      angle: shortestTurn(from.angle - to.angle),
+      start,
+      animation: this.nudgeAnimation === "none" ? "slide" : this.nudgeAnimation,
+    };
   }
 
   previewMotions(target: Target | null, now: number): Map<string, MotionFrame> {
     const frames = new Map<string, MotionFrame>();
     const seen = new Set<string>();
-    const animation = this.nudgeAnimation;
     const hand = this.inventory.hand;
-    const track = (id: string, key: string, from: Point, to: Point) => {
-      if (animation === "none") return;
+    const track = (id: string, key: string, from: Pose, to: Pose) => {
+      if (this.nudgeAnimation === "none") return;
       seen.add(id);
       let entry = this.previews.get(id);
       if (!entry || entry.key !== key) {
-        const shown = entry && motionAt(entry.motion, now);
-        const start = entry
-          ? { x: entry.to.x + (shown?.offset.x ?? 0), y: entry.to.y + (shown?.offset.y ?? 0) }
-          : from;
-        entry = { key, to, motion: { itemId: id, offset: { x: start.x - to.x, y: start.y - to.y }, start: now, animation } };
+        entry = { key, to, motion: this.motionBetween(id, entry ? shownPose(entry, now) : from, to, now) };
         this.previews.set(id, entry);
       }
       const frame = motionAt(entry.motion, now);
@@ -260,24 +293,20 @@ export class Demo {
     };
     if (target && hand && target.nudged) {
       const key = [target.frame.grid.id, hand.rotation, target.origin.x, target.origin.y].join();
+      const angle = (hand.rotation * Math.PI) / 2;
       track(
         hand.itemId,
         key,
-        cellOrigin(this.layout, target.frame, target.aimed),
-        cellOrigin(this.layout, target.frame, target.origin),
+        { at: cellOrigin(this.layout, target.frame, target.aimed), angle },
+        { at: cellOrigin(this.layout, target.frame, target.origin), angle },
       );
     }
     if (target?.outcome.kind === "pushed") {
       for (const moved of target.outcome.pushed) {
         const was = this.inventory.placements.find((placement) => placement.itemId === moved.itemId);
         if (!was) continue;
-        const key = [was.origin.x, was.origin.y, moved.origin.x, moved.origin.y].join();
-        track(
-          moved.itemId,
-          key,
-          cellOrigin(this.layout, target.frame, was.origin),
-          cellOrigin(this.layout, target.frame, moved.origin),
-        );
+        const key = [moved.origin.x, moved.origin.y, moved.rotation].join();
+        track(moved.itemId, key, this.poseOf(this.inventory, was), this.poseOf(this.inventory, moved));
       }
     }
     for (const [id, entry] of this.previews) {
@@ -288,18 +317,11 @@ export class Demo {
     return frames;
   }
 
-  private slideBack(id: string, entry: { to: Point; motion: Motion }, now: number): void {
+  private slideBack(id: string, entry: Preview, now: number): void {
     const placement = this.inventory.placements.find((candidate) => candidate.itemId === id);
-    const frame = placement && this.layout.frames.find((candidate) => candidate.grid.id === placement.gridId);
-    if (!placement || !frame || this.nudgeAnimation === "none") return;
-    const shown = motionAt(entry.motion, now);
-    const home = cellOrigin(this.layout, frame, placement.origin);
-    const offset = {
-      x: entry.to.x + (shown?.offset.x ?? 0) - home.x,
-      y: entry.to.y + (shown?.offset.y ?? 0) - home.y,
-    };
+    if (!placement || this.nudgeAnimation === "none") return;
     this.motions = this.motions.filter((motion) => motion.itemId !== id);
-    this.motions.push({ itemId: id, offset, start: now, animation: this.nudgeAnimation });
+    this.motions.push(this.motionBetween(id, shownPose(entry, now), this.poseOf(this.inventory, placement), now));
   }
 
   motionFor(itemId: string, now: number): MotionFrame | null {
@@ -337,14 +359,6 @@ export class Demo {
     const now = this.clock();
     const shown = this.spinFor(now)?.angle ?? 0;
     this.spin = this.nudgeAnimation === "none" ? null : { angle: shown + turn, start: now, animation: this.nudgeAnimation };
-  }
-
-  turnPivot(target: Target): Point | null {
-    const grabbed = this.heldFootprint()?.[this.grabIndex];
-    if (!grabbed) return null;
-    const cell = { x: target.origin.x + grabbed.x, y: target.origin.y + grabbed.y };
-    const corner = cellOrigin(this.layout, target.frame, cell);
-    return { x: corner.x + this.grabOffset.x, y: corner.y + this.grabOffset.y };
   }
 
   spinFor(now: number): { angle: number; scale: number } | null {
