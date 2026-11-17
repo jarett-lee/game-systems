@@ -25,6 +25,7 @@ The rest of the project's words are defined in [GLOSSARY.md](GLOSSARY.md).
 systems/   one folder per system: its code, tests, and glossary
 site/      the Demo site (GitHub Pages, also runs locally)
 publish/   scripts that record videos and publish Posts
+tools/     repo tooling, such as the no-comments lint rule
 docs/adr/  decisions and why they were made
 ```
 
@@ -32,6 +33,7 @@ docs/adr/  decisions and why they were made
 
 - **TypeScript** everywhere ([ADR 0003](docs/adr/0003-typescript-over-rust-wasm.md)).
 - **Systems are logic only**: game state and rules over plain data, no rendering or input ([ADR 0002](docs/adr/0002-systems-are-logic-only.md)). That keeps them testable, portable to any engine, and easy to port to another language later.
+- **No comments in code.** Names, types, and tests carry the meaning. If code needs a comment to be understood, rename it, extract it, encode it in a type, or cover it with a test. `npm run lint` enforces this with a local ESLint rule ([tools/eslint/no-comments.js](tools/eslint/no-comments.js)) that rejects every comment, including `eslint-disable` and `@ts-expect-error`, and inline ESLint config is turned off so it can't be bypassed. The writing about how and why a system works goes in its README and Posts instead.
 - **The site** uses Vite, a canvas for visuals, and Tweakpane for each Demo's controls. It redeploys on every push to `main`.
 
 ## How a system ships

@@ -1,0 +1,14 @@
+{
+  "name": "game-systems",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "test:lint-rules": "node --test tools/eslint/"
+  },
+  "devDependencies": {
+    "eslint": "^10.15.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0"
+  }
+}
