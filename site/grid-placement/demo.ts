@@ -4,7 +4,6 @@ import {
   footprintBounds,
   itemAt,
   nudgeInside,
-  nudgeToFree,
   popOut,
   previewDrop,
   returnHeld,
@@ -57,8 +56,6 @@ export class Demo {
   grabOffset: Point = { x: 0, y: 0 };
   holdBy: HoldBy = "item center";
   pickUpBy: PickUpBy = "press and drag";
-  alwaysNudge = true;
-  nudgeReach = Infinity;
   nudgeAnimation: NudgeAnimation = "spring";
   motions: Motion[] = [];
   private previews = new Map<string, { key: string; to: Point; motion: Motion }>();
@@ -139,26 +136,11 @@ export class Demo {
       const raw = { x: cell.x - grabbed.x, y: cell.y - grabbed.y };
       const inside = nudgeInside(this.inventory, frame.grid.id, raw);
       if (!inside) continue;
-      return this.withNudge(frame, raw, inside, anchor, cell);
+      const outcome = previewDrop(this.inventory, frame.grid.id, inside);
+      const nudged = inside.x !== raw.x || inside.y !== raw.y;
+      return { frame, aimed: raw, origin: inside, nudged, outcome };
     }
     return null;
-  }
-
-  private withNudge(frame: GridFrame, raw: Cell, inside: Cell, anchor: Point, cell: Cell): Target {
-    const id = frame.grid.id;
-    const outcome = previewDrop(this.inventory, id, inside);
-    const moved = inside.x !== raw.x || inside.y !== raw.y;
-    const kept = { frame, aimed: raw, origin: inside, nudged: moved, outcome };
-    if (!this.alwaysNudge || outcome.kind === "placed") return kept;
-
-    const center = cellOrigin(this.layout, frame, cell);
-    const lean = {
-      x: (anchor.x - (center.x + this.layout.cellSize / 2)) / this.layout.pitch,
-      y: (anchor.y - (center.y + this.layout.cellSize / 2)) / this.layout.pitch,
-    };
-    const free = nudgeToFree(this.inventory, id, inside, this.nudgeReach, lean);
-    if (!free) return kept;
-    return { frame, aimed: raw, origin: free, nudged: true, outcome: previewDrop(this.inventory, id, free) };
   }
 
   press(point: Point): void {
