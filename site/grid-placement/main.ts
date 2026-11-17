@@ -180,7 +180,7 @@ for (const animation of Object.keys(animationSettings.durations) as (keyof typeo
 timing.addBinding(animationSettings, "springOvershoot", { label: "spring overshoot", min: 0, max: 5, step: 0.1 });
 timing.addBinding(animationSettings, "popSwell", { label: "pop swell", min: 0, max: 0.5, step: 0.01 });
 pane.addBinding(settings, "cellSize", { label: "cell size", min: 28, max: 96, step: 2 }).on("change", relayout);
-const grids = pane.addFolder({ title: "Grids" });
+const grids = pane.addFolder({ title: "Grids", expanded: false });
 grids.addBinding(settings, "backpackWidth", { label: "backpack w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);
 grids.addBinding(settings, "backpackHeight", { label: "backpack h", min: 2, max: 8, step: 1 }).on("change", resetFromSettings);
 grids.addBinding(settings, "stashWidth", { label: "stash w", min: 2, max: 10, step: 1 }).on("change", resetFromSettings);

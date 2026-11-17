@@ -92,6 +92,15 @@ body.playing canvas {
   background: var(--slate-deep);
 }
 
+.controls .tp-fldv_b:focus:not(:focus-visible),
+.controls .tp-fldv_b:active {
+  background: var(--navy-raised);
+}
+
+.controls .tp-fldv_b:focus:not(:focus-visible):hover {
+  background: var(--slate-deep);
+}
+
 .controls .tp-fldv_c {
   padding-top: 4px;
   padding-bottom: 6px;
