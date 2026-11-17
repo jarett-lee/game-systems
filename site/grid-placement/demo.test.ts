@@ -521,7 +521,12 @@ describe("pushed pieces that turn", () => {
 });
 
 describe("waiting before a push preview", () => {
+  test("there's no wait by default", () => {
+    expect(new Demo(defaultSizes, 64, { width: 1000, height: 700 }).pushDwell).toBe(0);
+  });
+
   function hoverDominoOverDots(demo: Demo) {
+    demo.pushDwell = 120;
     demo.reset(defaultSizes, [
       { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
       { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
@@ -594,5 +599,42 @@ describe("push timing", () => {
     const cells = Math.hypot(motion.offset.x, motion.offset.y) / demo.layout.pitch;
     expect(motion.duration).toBe(pushDuration(cells));
     expect(pushDuration(cells)).toBeGreaterThan(pushDuration(0));
+  });
+});
+
+describe("drawing order", () => {
+  function push(demo: Demo, from: { x: number; y: number }, onto: { x: number; y: number }) {
+    const stash = frameFor(demo.layout, "stash");
+    const grab = cellOrigin(demo.layout, stash, from);
+    const drop = cellOrigin(demo.layout, stash, onto);
+    demo.press({ x: grab.x + 10, y: grab.y + 10 });
+    demo.move({ x: drop.x + 10, y: drop.y + 10 });
+    demo.release({ x: drop.x + 10, y: drop.y + 10 });
+    expect(demo.message).toMatch(/^Pushed/);
+  }
+
+  test("the most recently pushed pieces are drawn above the rest", () => {
+    const demo = demoWithShowreelLayout();
+    demo.reset(defaultSizes, [
+      { itemId: "dot-1", gridId: "stash", origin: { x: 0, y: 0 }, rotation: 0 },
+      { itemId: "dot-2", gridId: "stash", origin: { x: 1, y: 0 }, rotation: 0 },
+      { itemId: "domino", gridId: "stash", origin: { x: 0, y: 3 }, rotation: 0 },
+      { itemId: "dot-3", gridId: "stash", origin: { x: 3, y: 3 }, rotation: 0 },
+      { itemId: "O", gridId: "backpack", origin: { x: 0, y: 0 }, rotation: 0 },
+    ]);
+
+    push(demo, { x: 0, y: 3 }, { x: 0, y: 0 });
+    const ids = demo.drawOrder().map((placement) => placement.itemId);
+    expect(ids.slice(-2).sort()).toEqual(["dot-1", "dot-2"]);
+
+    const moved = demo.drawOrder().find((placement) => placement.itemId === "dot-1");
+    if (!moved) throw new Error("dot-1 missing");
+    push(demo, { x: 3, y: 3 }, moved.origin);
+    expect(demo.drawOrder().at(-1)?.itemId).toBe("dot-1");
+  });
+
+  test("a fresh layout starts in its own order", () => {
+    const demo = demoWithShowreelLayout();
+    expect(demo.drawOrder()).toEqual(demo.inventory.placements);
   });
 });

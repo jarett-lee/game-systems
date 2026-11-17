@@ -203,7 +203,7 @@ export function render(ctx: CanvasRenderingContext2D, palette: Palette, demo: De
   const showPush = demo.pushReady(target, now);
   const pushedIds = showPush && target?.outcome.kind === "pushed" ? target.outcome.pushed.map((placement) => placement.itemId) : [];
 
-  for (const placement of inventory.placements) {
+  for (const placement of demo.drawOrder()) {
     const frame = layout.frames.find((candidate) => candidate.grid.id === placement.gridId);
     if (!frame) continue;
     const cells = placementCells(inventory, placement);

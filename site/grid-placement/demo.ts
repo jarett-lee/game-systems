@@ -78,7 +78,8 @@ export class Demo {
   pickUpBy: PickUpBy = "press and drag";
   oneCovered: DropRules["oneCovered"] = "push";
   nudgeAnimation: NudgeAnimation = "slide";
-  pushDwell = 120;
+  pushDwell = 0;
+  private raised: string[] = [];
   private pushSeen: { key: string; since: number } | null = null;
   motions: Motion[] = [];
   spin: Spin | null = null;
@@ -108,6 +109,7 @@ export class Demo {
     this.inventory = createInventory(gridsFor(sizes), catalog);
     this.layout = computeLayout(this.inventory.grids, this.preferredCellSize, this.available);
     this.pointer = null;
+    this.raised = [];
     if (placements) {
       this.inventory = { ...this.inventory, placements };
     } else {
@@ -247,6 +249,7 @@ export class Demo {
     for (const moved of outcome.pushed) {
       const previewed = this.previews.get(moved.itemId);
       if (previewed) {
+        this.raise(moved.itemId);
         const frame = motionAt(previewed.motion, start);
         if (frame) this.motions.push({ ...previewed.motion, offset: frame.offset, angle: frame.angle, start, animation });
         continue;
@@ -268,7 +271,17 @@ export class Demo {
     return { at: { x: (left + right) / 2, y: (top + bottom) / 2 }, angle: (placement.rotation * Math.PI) / 2 };
   }
 
+  private raise(itemId: string): void {
+    this.raised = [...this.raised.filter((id) => id !== itemId), itemId];
+  }
+
+  drawOrder(): Placement[] {
+    const rank = (placement: Placement) => this.raised.indexOf(placement.itemId);
+    return [...this.inventory.placements].sort((a, b) => rank(a) - rank(b));
+  }
+
   private motionBetween(itemId: string, from: Pose, to: Pose, start: number, push = false): Motion {
+    if (push) this.raise(itemId);
     const offset = { x: from.at.x - to.at.x, y: from.at.y - to.at.y };
     const cells = Math.hypot(offset.x, offset.y) / this.layout.pitch;
     return {
