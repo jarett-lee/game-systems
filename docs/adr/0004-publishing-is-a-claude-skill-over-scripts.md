@@ -1,0 +1,3 @@
+# Publishing is a Claude Code skill over small scripts
+
+Publishing runs as a Claude Code skill (`.claude/skills/publish/`) that orchestrates small, rerunnable scripts in `publish/`. Scripts do every mechanical step (recording the Showreel, mixing in the voiceover, subtitles, uploading to each Publishing Platform); Claude drafts the text Post Elements and applies the edits you ask for during review. Nothing is published without your approval. A plain script pipeline can't draft text or take edit requests, and a hosted CI pipeline can't record your voiceover or hold your platform keys, so publishing runs locally and depends on Claude Code.
